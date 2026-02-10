@@ -2,21 +2,20 @@ package handler
 
 import (
 	"encoding/json"
+	"go-gw-test/cmd/auth_gw/internal/types"
+	"go-gw-test/cmd/auth_gw/internal/usecase"
 	"net/http"
-
-	"go-gw-test/internal/auth_gw/types"
-	"go-gw-test/internal/auth_gw/usecase"
 
 	"go.uber.org/zap"
 )
 
 // AuthHandler exposes HTTP handlers for auth_gw endpoints.
 type AuthHandler struct {
-	usecase usecase.AuthUsecase
+	usecase usecase.AuthUseCase
 }
 
 // NewAuthHandler constructs an AuthHandler.
-func NewAuthHandler(authUsecase usecase.AuthUsecase) *AuthHandler {
+func NewAuthHandler(authUsecase usecase.AuthUseCase) *AuthHandler {
 	return &AuthHandler{
 		usecase: authUsecase,
 	}

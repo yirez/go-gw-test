@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"go-gw-test/cmd/auth_gw/internal/appservice"
 	"go-gw-test/pkg/rest_qol"
 
-	"go-gw-test/internal/auth_gw/appservice"
 	"go-gw-test/pkg/configuration_manager"
 
 	"go.uber.org/zap"
@@ -14,14 +14,14 @@ import (
 func main() {
 	configPath := "config.hcl"
 
-	cfg, logger, db, err := configuration_manager.InitStandardConfigs(configPath)
+	cfg, err := configuration_manager.InitStandardConfigs(configPath)
 	if err != nil {
 		fmt.Printf("init configs: %v\n", err)
 		return
 	}
-	zap.ReplaceGlobals(logger)
+	zap.ReplaceGlobals(cfg.Clients.Logger)
 
-	app := appservice.NewAppService(cfg, db)
+	app := appservice.NewAppService(cfg)
 
 	err = rest_qol.RunHTTPServer(app.Address(), app.Router())
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 
 	"go-gw-test/pkg/configuration_manager/types"
 
+	"github.com/hashicorp/hcl"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -23,40 +24,45 @@ type StandardConfig = types.StandardConfig
 type DBConfig = types.DBConfig
 
 // InitStandardConfigs loads env/port from configPath and initializes a zap logger and GORM connection.
-func InitStandardConfigs(configPath string) (StandardConfig, *zap.Logger, *gorm.DB, error) {
+func InitStandardConfigs(configPath string) (StandardConfig, error) {
 	var cfg StandardConfig
 	if configPath == "" {
 		err := fmt.Errorf("configPath is required")
 		log.Printf("init config: %v", err)
-		return cfg, nil, nil, err
+		return cfg, err
 	}
 
 	v, err := loadConfig(configPath)
 	if err != nil {
 		log.Printf("load config: %v", err)
-		return StandardConfig{}, nil, nil, err
+		return StandardConfig{}, err
 	}
 
-	err = v.Unmarshal(&cfg)
+	err = v.Unmarshal(&cfg, viper.DecodeHook(hclDecodeHook()))
 	if err != nil {
 		err = fmt.Errorf("decode config: %w", err)
 		log.Printf("decode config: %v", err)
-		return StandardConfig{}, nil, nil, err
+		return StandardConfig{}, err
 	}
 
 	logger, err := buildLogger(cfg.Env)
 	if err != nil {
 		log.Printf("build logger: %v", err)
-		return StandardConfig{}, nil, nil, err
+		return StandardConfig{}, err
 	}
 
 	db, err := initDB(cfg.DB)
 	if err != nil {
 		log.Printf("init db: %v", err)
-		return StandardConfig{}, nil, nil, err
+		return StandardConfig{}, err
 	}
 
-	return cfg, logger, db, nil
+	cfg.Clients = types.StandardClients{
+		Logger: logger,
+		DB:     db,
+	}
+
+	return cfg, nil
 }
 
 // buildLogger creates a zap logger based on the environment.
@@ -69,12 +75,13 @@ func buildLogger(env string) (*zap.Logger, error) {
 }
 
 // initDB initializes a GORM Postgres connection if dbConfig is provided.
-func initDB(dbConfig *DBConfig) (*gorm.DB, error) {
-	if dbConfig == nil {
+func initDB(dbConfig []DBConfig) (*gorm.DB, error) {
+	if len(dbConfig) == 0 {
 		return nil, nil
 	}
 
-	dsn, err := buildPostgresDSN(dbConfig)
+	config := dbConfig[0]
+	dsn, err := buildPostgresDSN(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +91,7 @@ func initDB(dbConfig *DBConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("open gorm db: %w", err)
 	}
 
-	err = configureDBPool(db, dbConfig)
+	err = configureDBPool(db, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +194,7 @@ func ReadCustomConfig(keyPath string, target any) error {
 		return err
 	}
 
-	err = sub.Unmarshal(target)
+	err = sub.Unmarshal(target, viper.DecodeHook(hclDecodeHook()))
 	if err != nil {
 		err = fmt.Errorf("decode config %s: %w", keyPath, err)
 		log.Printf("read custom config decode: %v", err)
@@ -199,11 +206,19 @@ func ReadCustomConfig(keyPath string, target any) error {
 
 // loadConfig reads config.hcl into a viper instance.
 func loadConfig(configPath string) (*viper.Viper, error) {
-	v := viper.New()
+	registry := viper.NewCodecRegistry()
+	err := registry.RegisterCodec("hcl", hclCodec{})
+	if err != nil {
+		err = fmt.Errorf("register hcl codec: %w", err)
+		log.Printf("load config: %v", err)
+		return nil, err
+	}
+
+	v := viper.NewWithOptions(viper.WithCodecRegistry(registry))
 	v.SetConfigFile(configPath)
 	v.SetConfigType("hcl")
 
-	err := v.ReadInConfig()
+	err = v.ReadInConfig()
 	if err != nil {
 		err = fmt.Errorf("read config: %w", err)
 		log.Printf("load config: %v", err)
@@ -213,11 +228,28 @@ func loadConfig(configPath string) (*viper.Viper, error) {
 	return v, nil
 }
 
+type hclCodec struct{}
+
+func (h hclCodec) Decode(b []byte, v map[string]any) error {
+	err := hcl.Decode(&v, string(b))
+	if err != nil {
+		return fmt.Errorf("decode hcl: %w", err)
+	}
+
+	return nil
+}
+
+func (h hclCodec) Encode(v map[string]any) ([]byte, error) {
+	return nil, fmt.Errorf("hcl encode not supported")
+}
+
 // decodeValueIntoTarget maps a config value into the target reference.
 func decodeValueIntoTarget(value any, target any) error {
 	if value == nil {
 		return fmt.Errorf("config value is nil")
 	}
+
+	value = unwrapSingletonSlice(value)
 
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Ptr || targetValue.IsNil() {
@@ -255,8 +287,9 @@ func decodeValueIntoTarget(value any, target any) error {
 	}
 
 	decoderConfig := &mapstructure.DecoderConfig{
-		Result:  target,
-		TagName: "mapstructure",
+		Result:     target,
+		TagName:    "mapstructure",
+		DecodeHook: hclDecodeHook(),
 	}
 	decoder, err := mapstructure.NewDecoder(decoderConfig)
 	if err != nil {
@@ -269,4 +302,30 @@ func decodeValueIntoTarget(value any, target any) error {
 	}
 
 	return nil
+}
+
+func hclDecodeHook() mapstructure.DecodeHookFunc {
+	return func(from reflect.Type, to reflect.Type, data any) (any, error) {
+		if data == nil {
+			return data, nil
+		}
+
+		if from.Kind() == reflect.Slice {
+			slice, ok := data.([]any)
+			if ok && len(slice) == 1 {
+				return slice[0], nil
+			}
+		}
+
+		return data, nil
+	}
+}
+
+func unwrapSingletonSlice(value any) any {
+	slice, ok := value.([]any)
+	if ok && len(slice) == 1 {
+		return slice[0]
+	}
+
+	return value
 }

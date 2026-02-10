@@ -1,9 +1,8 @@
 package router
 
 import (
+	"go-gw-test/cmd/auth_gw/internal/handler"
 	"net/http"
-
-	"go-gw-test/internal/auth_gw/handler"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"

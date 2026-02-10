@@ -3,8 +3,7 @@ package repo
 import (
 	"context"
 	"errors"
-
-	"go-gw-test/internal/auth_gw/types"
+	"go-gw-test/cmd/auth_gw/internal/types"
 
 	"gorm.io/gorm"
 )

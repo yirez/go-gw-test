@@ -1,10 +1,22 @@
 package types
 
+import (
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+)
+
 // StandardConfig captures shared settings used to start each service.
 type StandardConfig struct {
-	Env  string    `mapstructure:"env"`
-	Port int       `mapstructure:"port"`
-	DB   *DBConfig `mapstructure:"db"`
+	Env     string          `mapstructure:"env"`
+	Port    int             `mapstructure:"port"`
+	DB      []DBConfig      `mapstructure:"db"`
+	Clients StandardClients `mapstructure:"-"`
+}
+
+// StandardClients provides shared service clients from configuration init.
+type StandardClients struct {
+	Logger *zap.Logger
+	DB     *gorm.DB
 }
 
 // DBConfig captures database configuration for GORM.

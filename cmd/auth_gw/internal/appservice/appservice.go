@@ -4,34 +4,32 @@ import (
 	"fmt"
 	"net/http"
 
-	"go-gw-test/internal/auth_gw/handler"
-	"go-gw-test/internal/auth_gw/repo"
-	"go-gw-test/internal/auth_gw/router"
-	"go-gw-test/internal/auth_gw/usecase"
+	"go-gw-test/cmd/auth_gw/internal/handler"
+	"go-gw-test/cmd/auth_gw/internal/repo"
+	"go-gw-test/cmd/auth_gw/internal/router"
+	"go-gw-test/cmd/auth_gw/internal/usecase"
+
 	"go-gw-test/pkg/configuration_manager"
 
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 // AppService wires dependencies and exposes HTTP router and server address.
 type AppService struct {
 	cfg    configuration_manager.StandardConfig
-	db     *gorm.DB
 	router http.Handler
 }
 
 // NewAppService builds an AppService with all auth_gw components.
-func NewAppService(cfg configuration_manager.StandardConfig, db *gorm.DB) *AppService {
-	authRepo := repo.NewAuthRepo(db)
-	authUsecase := usecase.NewAuthUsecase(authRepo)
+func NewAppService(cfg configuration_manager.StandardConfig) *AppService {
+	authRepo := repo.NewAuthRepo(cfg.Clients.DB)
+	authUsecase := usecase.NewAuthUseCase(authRepo)
 	authHandler := handler.NewAuthHandler(authUsecase)
 
 	appRouter := router.NewRouter(authHandler)
 
 	return &AppService{
 		cfg:    cfg,
-		db:     db,
 		router: appRouter,
 	}
 }
