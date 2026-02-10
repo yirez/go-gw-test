@@ -99,12 +99,13 @@ Notes:
 
 - **Routing rules**: dynamic routing from `config.hcl`; rules map path patterns to backend services.
 - **Gateway endpoint**: `gw_endpoint` in `config.hcl` defines the public entrypoint for clients.
+- **Configuration**: all services load shared settings (env/port/db) from `config.hcl` via `configuration_manager`.
 - **Allowed routes**: use gorilla mux path template semantics for token `allowed_routes` matching.
 - **Rate limiting**: use Redis atomic operations (e.g., INCR with TTL) or Lua script for fixed window.
 - **Error mapping**: consistent HTTP responses (401 invalid token, 403 disallowed, 429 rate limit).
 - **Observability**: structured logs with request id; metrics endpoint for Prometheus scraping.
-- **Auth service**: `auth_gw` issues and validates tokens. JWT signing key derived from system clock; TTL = 1 hour.
-- **Service-to-service tokens**: each service (except `auth_gw`) generates a token for itself and validates incoming tokens in interceptors. Auth-related interceptors live in `auth_usecase.go` per service.
+- **Auth service**: `auth_gw` issues and validates tokens. JWT signing key derived from system clock; TTL = 1 hour. `api_gw` delegates token validation to `auth_gw`.
+- **Service-to-service tokens**: each service (except `auth_gw`) generates a token for itself; `api_gw` is the primary auth gatekeeper for incoming requests.
 - **Config and logging**: all apps call `configuration_manager` `InitStandardConfigs` to load env/port, initialize a zap logger, and (when configured) return a GORM Postgres connection before starting the REST server.
 - **Concurrency**: ensure per-request token fetch and rate limit checks are safe and efficient.
 
