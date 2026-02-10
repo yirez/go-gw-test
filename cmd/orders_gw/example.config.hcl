@@ -1,0 +1,16 @@
+env = "dev"
+port = 8086
+
+db {
+  host = "localhost"
+  port = 5432
+  name = "app"
+  user = "app"
+  password = "app"
+  sslmode = "disable"
+  timezone = "UTC"
+  max_open_conns = 25
+  max_idle_conns = 10
+  conn_max_lifetime_sec = 1800
+  conn_max_idle_time_sec = 300
+}

@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "api_gw"
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+  - job_name: "auth_gw"
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+  - job_name: "users_gw"
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+  - job_name: "orders_gw"
+    static_configs:
+      - targets: ["host.docker.internal:8083"]
