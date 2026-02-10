@@ -2,55 +2,57 @@ package configuration_manager
 
 import (
 	"fmt"
+	"log"
+	"reflect"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/hcl/v2/hclsimple"
+	"go-gw-test/pkg/configuration_manager/types"
+
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 // StandardConfig captures shared settings used to start each service.
-type StandardConfig struct {
-	Env  string    `hcl:"env"`
-	Port int       `hcl:"port"`
-	DB   *DBConfig `hcl:"db,block"`
-}
+type StandardConfig = types.StandardConfig
 
 // DBConfig captures database configuration for GORM.
-type DBConfig struct {
-	Host            string `hcl:"host"`
-	Port            int    `hcl:"port"`
-	Name            string `hcl:"name"`
-	User            string `hcl:"user"`
-	Password        string `hcl:"password"`
-	SSLMode         string `hcl:"sslmode,optional"`
-	TimeZone        string `hcl:"timezone,optional"`
-	MaxOpenConns    int    `hcl:"max_open_conns,optional"`
-	MaxIdleConns    int    `hcl:"max_idle_conns,optional"`
-	ConnMaxLifetime int    `hcl:"conn_max_lifetime_sec,optional"`
-	ConnMaxIdleTime int    `hcl:"conn_max_idle_time_sec,optional"`
-}
+type DBConfig = types.DBConfig
 
 // InitStandardConfigs loads env/port from configPath and initializes a zap logger and GORM connection.
 func InitStandardConfigs(configPath string) (StandardConfig, *zap.Logger, *gorm.DB, error) {
 	var cfg StandardConfig
 	if configPath == "" {
-		return cfg, nil, nil, fmt.Errorf("configPath is required")
+		err := fmt.Errorf("configPath is required")
+		log.Printf("init config: %v", err)
+		return cfg, nil, nil, err
 	}
 
-	if err := hclsimple.DecodeFile(configPath, nil, &cfg); err != nil {
-		return StandardConfig{}, nil, nil, fmt.Errorf("decode config: %w", err)
+	v, err := loadConfig(configPath)
+	if err != nil {
+		log.Printf("load config: %v", err)
+		return StandardConfig{}, nil, nil, err
+	}
+
+	err = v.Unmarshal(&cfg)
+	if err != nil {
+		err = fmt.Errorf("decode config: %w", err)
+		log.Printf("decode config: %v", err)
+		return StandardConfig{}, nil, nil, err
 	}
 
 	logger, err := buildLogger(cfg.Env)
 	if err != nil {
+		log.Printf("build logger: %v", err)
 		return StandardConfig{}, nil, nil, err
 	}
 
 	db, err := initDB(cfg.DB)
 	if err != nil {
+		log.Printf("init db: %v", err)
 		return StandardConfig{}, nil, nil, err
 	}
 
@@ -82,7 +84,8 @@ func initDB(dbConfig *DBConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("open gorm db: %w", err)
 	}
 
-	if err := configureDBPool(db, dbConfig); err != nil {
+	err = configureDBPool(db, dbConfig)
+	if err != nil {
 		return nil, err
 	}
 
@@ -147,6 +150,122 @@ func configureDBPool(db *gorm.DB, dbConfig *DBConfig) error {
 
 	if dbConfig.ConnMaxIdleTime > 0 {
 		sqlDB.SetConnMaxIdleTime(time.Duration(dbConfig.ConnMaxIdleTime) * time.Second)
+	}
+
+	return nil
+}
+
+// ReadCustomConfig decodes a config attribute or block into target using a dotted key path.
+func ReadCustomConfig(keyPath string, target any) error {
+	if keyPath == "" {
+		err := fmt.Errorf("keyPath is required")
+		log.Printf("read custom config: %v", err)
+		return err
+	}
+	if target == nil {
+		err := fmt.Errorf("target is required")
+		log.Printf("read custom config: %v", err)
+		return err
+	}
+
+	configPath := "config.hcl"
+	v, err := loadConfig(configPath)
+	if err != nil {
+		log.Printf("read custom config load: %v", err)
+		return err
+	}
+
+	if v.IsSet(keyPath) {
+		value := v.Get(keyPath)
+		return decodeValueIntoTarget(value, target)
+	}
+
+	sub := v.Sub(keyPath)
+	if sub == nil {
+		err = fmt.Errorf("config key not found: %s", keyPath)
+		log.Printf("read custom config: %v", err)
+		return err
+	}
+
+	err = sub.Unmarshal(target)
+	if err != nil {
+		err = fmt.Errorf("decode config %s: %w", keyPath, err)
+		log.Printf("read custom config decode: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// loadConfig reads config.hcl into a viper instance.
+func loadConfig(configPath string) (*viper.Viper, error) {
+	v := viper.New()
+	v.SetConfigFile(configPath)
+	v.SetConfigType("hcl")
+
+	err := v.ReadInConfig()
+	if err != nil {
+		err = fmt.Errorf("read config: %w", err)
+		log.Printf("load config: %v", err)
+		return nil, err
+	}
+
+	return v, nil
+}
+
+// decodeValueIntoTarget maps a config value into the target reference.
+func decodeValueIntoTarget(value any, target any) error {
+	if value == nil {
+		return fmt.Errorf("config value is nil")
+	}
+
+	targetValue := reflect.ValueOf(target)
+	if targetValue.Kind() != reflect.Ptr || targetValue.IsNil() {
+		return fmt.Errorf("target must be a non-nil pointer")
+	}
+
+	kind := targetValue.Elem().Kind()
+	if kind == reflect.String {
+		strValue, ok := value.(string)
+		if ok {
+			targetValue.Elem().SetString(strValue)
+			return nil
+		}
+	}
+
+	if kind == reflect.Int || kind == reflect.Int64 {
+		intValue, ok := value.(int)
+		if ok {
+			targetValue.Elem().SetInt(int64(intValue))
+			return nil
+		}
+		floatValue, ok := value.(float64)
+		if ok {
+			targetValue.Elem().SetInt(int64(floatValue))
+			return nil
+		}
+	}
+
+	if kind == reflect.Bool {
+		boolValue, ok := value.(bool)
+		if ok {
+			targetValue.Elem().SetBool(boolValue)
+			return nil
+		}
+	}
+
+	decoderConfig := &mapstructure.DecoderConfig{
+		Result:  target,
+		TagName: "mapstructure",
+	}
+	decoder, err := mapstructure.NewDecoder(decoderConfig)
+	if err != nil {
+		return fmt.Errorf("build decoder: %w", err)
+	}
+
+	err = decoder.Decode(value)
+	if err != nil {
+		return fmt.Errorf("decode value: %w", err)
 	}
 
 	return nil

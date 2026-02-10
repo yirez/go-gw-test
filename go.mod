@@ -3,7 +3,9 @@ module go-gw-test
 go 1.25.7
 
 require (
-	github.com/hashicorp/hcl/v2 v2.23.0
+	github.com/gorilla/mux v1.8.1
+	github.com/mitchellh/mapstructure v1.5.0
+	github.com/spf13/viper v1.20.1
 	go.uber.org/zap v1.27.0
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.30.0
