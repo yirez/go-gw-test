@@ -5,11 +5,10 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"go.uber.org/zap"
 )
 
 // NewRouter builds the gorilla mux router for auth_gw.
-func NewRouter(authHandler *handler.AuthHandler) http.Handler {
+func NewRouter(authHandler *handler.AuthHandler, loggingHandler *handler.LoggingHandler) http.Handler {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/healthz", authHandler.Health).Methods(http.MethodGet)
@@ -22,20 +21,8 @@ func NewRouter(authHandler *handler.AuthHandler) http.Handler {
 
 	router.NotFoundHandler = http.HandlerFunc(authHandler.NotFound)
 
-	router.Use(loggingMiddleware())
+	router.Use(loggingHandler.LoggingMiddleware())
+	router.Use(authHandler.AuthMiddleware())
 
 	return router
-}
-
-// loggingMiddleware emits basic access logs for each request.
-func loggingMiddleware() mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			zap.L().Info("request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-			)
-			next.ServeHTTP(w, r)
-		})
-	}
 }

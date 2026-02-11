@@ -2,22 +2,26 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"strings"
+
 	"go-gw-test/cmd/auth_gw/internal/types"
 	"go-gw-test/cmd/auth_gw/internal/usecase"
-	"net/http"
 
+	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
 // AuthHandler exposes HTTP handlers for auth_gw endpoints.
 type AuthHandler struct {
-	usecase usecase.AuthUseCase
+	au usecase.AuthUseCase
 }
 
 // NewAuthHandler constructs an AuthHandler.
 func NewAuthHandler(authUsecase usecase.AuthUseCase) *AuthHandler {
 	return &AuthHandler{
-		usecase: authUsecase,
+		au: authUsecase,
 	}
 }
 
@@ -46,9 +50,9 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.usecase.Login(r.Context(), req)
+	resp, err := h.au.Login(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, errorResponse(err.Error()))
+		writeJSON(w, http.StatusUnauthorized, errorResponse("unauthorized"))
 		return
 	}
 
@@ -65,9 +69,9 @@ func (h *AuthHandler) ServiceToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.usecase.ServiceToken(r.Context(), req)
+	resp, err := h.au.ServiceToken(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, errorResponse(err.Error()))
+		writeJSON(w, http.StatusUnauthorized, errorResponse("unauthorized"))
 		return
 	}
 
@@ -84,9 +88,9 @@ func (h *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := h.usecase.Validate(r.Context(), req)
+	resp, err := h.au.Validate(r.Context(), req)
 	if err != nil {
-		writeJSON(w, http.StatusUnauthorized, errorResponse(err.Error()))
+		writeJSON(w, http.StatusUnauthorized, errorResponse("unauthorized"))
 		return
 	}
 
@@ -96,6 +100,34 @@ func (h *AuthHandler) Validate(w http.ResponseWriter, r *http.Request) {
 // NotFound returns a JSON 404 response for unmatched routes.
 func (h *AuthHandler) NotFound(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNotFound, errorResponse("not found"))
+}
+
+// AuthMiddleware enforces bearer token validation on protected routes.
+func (h *AuthHandler) AuthMiddleware() mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if isPublicRoute(r.Method, r.URL.Path) {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			token, err := bearerToken(r)
+			if err != nil {
+				h.logError("auth middleware bearer token", err)
+				writeJSON(w, http.StatusUnauthorized, errorResponse("unauthorized"))
+				return
+			}
+
+			_, err = h.au.Validate(r.Context(), types.ValidateRequest{Token: token})
+			if err != nil {
+				h.logError("auth middleware validate token", err)
+				writeJSON(w, http.StatusUnauthorized, errorResponse("unauthorized"))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 // writeJSON serializes a response with application/json content type.
@@ -113,4 +145,36 @@ func errorResponse(message string) map[string]string {
 // logError writes an error log if a logger is available.
 func (h *AuthHandler) logError(message string, err error) {
 	zap.L().Error(message, zap.Error(err))
+}
+
+func bearerToken(r *http.Request) (string, error) {
+	header := r.Header.Get("Authorization")
+	if header == "" {
+		return "", fmt.Errorf("authorization header missing")
+	}
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(header, prefix) {
+		return "", fmt.Errorf("invalid authorization header")
+	}
+
+	token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
+	if token == "" {
+		return "", fmt.Errorf("empty bearer token")
+	}
+
+	return token, nil
+}
+
+func isPublicRoute(method string, path string) bool {
+	if method == http.MethodOptions {
+		return true
+	}
+
+	switch path {
+	case "/healthz", "/readyz", "/metrics", "/auth/login", "/auth/service-token":
+		return true
+	default:
+		return false
+	}
 }

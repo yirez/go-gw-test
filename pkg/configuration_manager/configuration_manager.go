@@ -2,64 +2,68 @@ package configuration_manager
 
 import (
 	"fmt"
+	"go-gw-test/pkg/configuration_manager/types"
 	"log"
 	"reflect"
-	"strings"
-	"time"
 
-	"go-gw-test/pkg/configuration_manager/types"
-
-	"github.com/hashicorp/hcl"
 	"github.com/mitchellh/mapstructure"
+	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-// StandardConfig captures shared settings used to start each service.
-type StandardConfig = types.StandardConfig
+// InitStandardConfigs loads env/port from configPath, initializes standard clients, and optionally auto-migrates.
+func InitStandardConfigs(initCheckList types.InitChecklist) (types.StandardConfig, error) {
+	var cfg types.StandardConfig
 
-// DBConfig captures database configuration for GORM.
-type DBConfig = types.DBConfig
-
-// InitStandardConfigs loads env/port from configPath and initializes a zap logger and GORM connection.
-func InitStandardConfigs(configPath string) (StandardConfig, error) {
-	var cfg StandardConfig
-	if configPath == "" {
-		err := fmt.Errorf("configPath is required")
-		log.Printf("init config: %v", err)
-		return cfg, err
-	}
-
-	v, err := loadConfig(configPath)
+	v, err := loadConfig("config.yml")
 	if err != nil {
 		log.Printf("load config: %v", err)
-		return StandardConfig{}, err
+		return types.StandardConfig{}, err
 	}
 
-	err = v.Unmarshal(&cfg, viper.DecodeHook(hclDecodeHook()))
+	err = v.Unmarshal(&cfg)
 	if err != nil {
 		err = fmt.Errorf("decode config: %w", err)
 		log.Printf("decode config: %v", err)
-		return StandardConfig{}, err
+		return types.StandardConfig{}, err
 	}
 
 	logger, err := buildLogger(cfg.Env)
 	if err != nil {
 		log.Printf("build logger: %v", err)
-		return StandardConfig{}, err
+		return types.StandardConfig{}, err
+	}
+	cfg.Clients.Logger = logger
+
+	var db *gorm.DB
+	if initCheckList.DB {
+		db, err = initDB(cfg.DBConfig)
+		if err != nil {
+			log.Printf("init db: %v", err)
+			return types.StandardConfig{}, err
+		}
+
+		if cfg.Env != "prod" {
+			err = autoMigrateDB(db, initCheckList.AutoMigrateList)
+			if err != nil {
+				log.Printf("auto migrate: %v", err)
+				return types.StandardConfig{}, err
+			}
+		}
+		cfg.Clients.DB = db
 	}
 
-	db, err := initDB(cfg.DB)
-	if err != nil {
-		log.Printf("init db: %v", err)
-		return StandardConfig{}, err
-	}
-
-	cfg.Clients = types.StandardClients{
-		Logger: logger,
-		DB:     db,
+	var redisClient *redis.Client
+	if initCheckList.Redis {
+		redisClient = newRedisClient(cfg.RedisConfig)
+		if redisClient == nil {
+			err = fmt.Errorf("redis not configured")
+			log.Printf("init redis: %v", err)
+			return types.StandardConfig{}, err
+		}
+		cfg.Clients.Redis = redisClient
 	}
 
 	return cfg, nil
@@ -72,94 +76,6 @@ func buildLogger(env string) (*zap.Logger, error) {
 	}
 
 	return zap.NewDevelopment()
-}
-
-// initDB initializes a GORM Postgres connection if dbConfig is provided.
-func initDB(dbConfig []DBConfig) (*gorm.DB, error) {
-	if len(dbConfig) == 0 {
-		return nil, nil
-	}
-
-	config := dbConfig[0]
-	dsn, err := buildPostgresDSN(&config)
-	if err != nil {
-		return nil, err
-	}
-
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("open gorm db: %w", err)
-	}
-
-	err = configureDBPool(db, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
-}
-
-// buildPostgresDSN builds a Postgres DSN for GORM.
-func buildPostgresDSN(dbConfig *DBConfig) (string, error) {
-	if strings.TrimSpace(dbConfig.Host) == "" {
-		return "", fmt.Errorf("db.host is required")
-	}
-	if dbConfig.Port == 0 {
-		return "", fmt.Errorf("db.port is required")
-	}
-	if strings.TrimSpace(dbConfig.Name) == "" {
-		return "", fmt.Errorf("db.name is required")
-	}
-	if strings.TrimSpace(dbConfig.User) == "" {
-		return "", fmt.Errorf("db.user is required")
-	}
-
-	sslMode := dbConfig.SSLMode
-	if strings.TrimSpace(sslMode) == "" {
-		sslMode = "disable"
-	}
-
-	timeZone := dbConfig.TimeZone
-	if strings.TrimSpace(timeZone) == "" {
-		timeZone = "UTC"
-	}
-
-	return fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s TimeZone=%s",
-		dbConfig.Host,
-		dbConfig.Port,
-		dbConfig.User,
-		dbConfig.Password,
-		dbConfig.Name,
-		sslMode,
-		timeZone,
-	), nil
-}
-
-// configureDBPool applies connection pool settings to the underlying sql.DB.
-func configureDBPool(db *gorm.DB, dbConfig *DBConfig) error {
-	sqlDB, err := db.DB()
-	if err != nil {
-		return fmt.Errorf("get sql db: %w", err)
-	}
-
-	if dbConfig.MaxOpenConns > 0 {
-		sqlDB.SetMaxOpenConns(dbConfig.MaxOpenConns)
-	}
-
-	if dbConfig.MaxIdleConns > 0 {
-		sqlDB.SetMaxIdleConns(dbConfig.MaxIdleConns)
-	}
-
-	if dbConfig.ConnMaxLifetime > 0 {
-		sqlDB.SetConnMaxLifetime(time.Duration(dbConfig.ConnMaxLifetime) * time.Second)
-	}
-
-	if dbConfig.ConnMaxIdleTime > 0 {
-		sqlDB.SetConnMaxIdleTime(time.Duration(dbConfig.ConnMaxIdleTime) * time.Second)
-	}
-
-	return nil
 }
 
 // ReadCustomConfig decodes a config attribute or block into target using a dotted key path.
@@ -175,7 +91,7 @@ func ReadCustomConfig(keyPath string, target any) error {
 		return err
 	}
 
-	configPath := "config.hcl"
+	configPath := "config.yml"
 	v, err := loadConfig(configPath)
 	if err != nil {
 		log.Printf("read custom config load: %v", err)
@@ -184,7 +100,12 @@ func ReadCustomConfig(keyPath string, target any) error {
 
 	if v.IsSet(keyPath) {
 		value := v.Get(keyPath)
-		return decodeValueIntoTarget(value, target)
+		err = decodeValueIntoTarget(value, target)
+		if err != nil {
+			log.Printf("read custom config decode value: %v", err)
+			return err
+		}
+		return nil
 	}
 
 	sub := v.Sub(keyPath)
@@ -194,7 +115,7 @@ func ReadCustomConfig(keyPath string, target any) error {
 		return err
 	}
 
-	err = sub.Unmarshal(target, viper.DecodeHook(hclDecodeHook()))
+	err = sub.Unmarshal(target)
 	if err != nil {
 		err = fmt.Errorf("decode config %s: %w", keyPath, err)
 		log.Printf("read custom config decode: %v", err)
@@ -204,21 +125,13 @@ func ReadCustomConfig(keyPath string, target any) error {
 	return nil
 }
 
-// loadConfig reads config.hcl into a viper instance.
+// loadConfig reads config.yml into a viper instance.
 func loadConfig(configPath string) (*viper.Viper, error) {
-	registry := viper.NewCodecRegistry()
-	err := registry.RegisterCodec("hcl", hclCodec{})
-	if err != nil {
-		err = fmt.Errorf("register hcl codec: %w", err)
-		log.Printf("load config: %v", err)
-		return nil, err
-	}
-
-	v := viper.NewWithOptions(viper.WithCodecRegistry(registry))
+	v := viper.New()
 	v.SetConfigFile(configPath)
-	v.SetConfigType("hcl")
+	v.SetConfigType("yaml")
 
-	err = v.ReadInConfig()
+	err := v.ReadInConfig()
 	if err != nil {
 		err = fmt.Errorf("read config: %w", err)
 		log.Printf("load config: %v", err)
@@ -228,32 +141,19 @@ func loadConfig(configPath string) (*viper.Viper, error) {
 	return v, nil
 }
 
-type hclCodec struct{}
-
-func (h hclCodec) Decode(b []byte, v map[string]any) error {
-	err := hcl.Decode(&v, string(b))
-	if err != nil {
-		return fmt.Errorf("decode hcl: %w", err)
-	}
-
-	return nil
-}
-
-func (h hclCodec) Encode(v map[string]any) ([]byte, error) {
-	return nil, fmt.Errorf("hcl encode not supported")
-}
-
 // decodeValueIntoTarget maps a config value into the target reference.
 func decodeValueIntoTarget(value any, target any) error {
 	if value == nil {
-		return fmt.Errorf("config value is nil")
+		err := fmt.Errorf("config value is nil")
+		log.Printf("decode value: %v", err)
+		return err
 	}
-
-	value = unwrapSingletonSlice(value)
 
 	targetValue := reflect.ValueOf(target)
 	if targetValue.Kind() != reflect.Ptr || targetValue.IsNil() {
-		return fmt.Errorf("target must be a non-nil pointer")
+		err := fmt.Errorf("target must be a non-nil pointer")
+		log.Printf("decode value: %v", err)
+		return err
 	}
 
 	kind := targetValue.Elem().Kind()
@@ -287,45 +187,22 @@ func decodeValueIntoTarget(value any, target any) error {
 	}
 
 	decoderConfig := &mapstructure.DecoderConfig{
-		Result:     target,
-		TagName:    "mapstructure",
-		DecodeHook: hclDecodeHook(),
+		Result:  target,
+		TagName: "mapstructure",
 	}
 	decoder, err := mapstructure.NewDecoder(decoderConfig)
 	if err != nil {
-		return fmt.Errorf("build decoder: %w", err)
+		err = fmt.Errorf("build decoder: %w", err)
+		log.Printf("decode value: %v", err)
+		return err
 	}
 
 	err = decoder.Decode(value)
 	if err != nil {
-		return fmt.Errorf("decode value: %w", err)
+		err = fmt.Errorf("decode value: %w", err)
+		log.Printf("decode value: %v", err)
+		return err
 	}
 
 	return nil
-}
-
-func hclDecodeHook() mapstructure.DecodeHookFunc {
-	return func(from reflect.Type, to reflect.Type, data any) (any, error) {
-		if data == nil {
-			return data, nil
-		}
-
-		if from.Kind() == reflect.Slice {
-			slice, ok := data.([]any)
-			if ok && len(slice) == 1 {
-				return slice[0], nil
-			}
-		}
-
-		return data, nil
-	}
-}
-
-func unwrapSingletonSlice(value any) any {
-	slice, ok := value.([]any)
-	if ok && len(slice) == 1 {
-		return slice[0]
-	}
-
-	return value
 }

@@ -2,31 +2,30 @@ package appservice
 
 import (
 	"fmt"
+	"go-gw-test/cmd/auth_gw/internal/router"
+	cmt "go-gw-test/pkg/configuration_manager/types"
 	"net/http"
+	"time"
 
 	"go-gw-test/cmd/auth_gw/internal/handler"
 	"go-gw-test/cmd/auth_gw/internal/repo"
-	"go-gw-test/cmd/auth_gw/internal/router"
 	"go-gw-test/cmd/auth_gw/internal/usecase"
-
-	"go-gw-test/pkg/configuration_manager"
-
-	"go.uber.org/zap"
 )
 
 // AppService wires dependencies and exposes HTTP router and server address.
 type AppService struct {
-	cfg    configuration_manager.StandardConfig
+	cfg    cmt.StandardConfig
 	router http.Handler
 }
 
 // NewAppService builds an AppService with all auth_gw components.
-func NewAppService(cfg configuration_manager.StandardConfig) *AppService {
+func NewAppService(cfg cmt.StandardConfig) *AppService {
 	authRepo := repo.NewAuthRepo(cfg.Clients.DB)
-	authUsecase := usecase.NewAuthUseCase(authRepo)
+	authUsecase := usecase.NewAuthUseCase(authRepo, jwtSigningKey(), time.Hour)
 	authHandler := handler.NewAuthHandler(authUsecase)
+	loggingHandler := handler.NewLoggingHandler()
 
-	appRouter := router.NewRouter(authHandler)
+	appRouter := router.NewRouter(authHandler, loggingHandler)
 
 	return &AppService{
 		cfg:    cfg,
@@ -44,7 +43,6 @@ func (s *AppService) Address() string {
 	return fmt.Sprintf(":%d", s.cfg.Port)
 }
 
-// WrapError attaches standard fields to server-level errors.
-func WrapError(err error) zap.Field {
-	return zap.Error(err)
+func jwtSigningKey() []byte {
+	return []byte(time.Now().UTC().Format(time.RFC3339))
 }

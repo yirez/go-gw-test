@@ -2,4 +2,4 @@
 .idea
 
 *.exe
-config.hcl
+cmd/auth_gw/config.yml

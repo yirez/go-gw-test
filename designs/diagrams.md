@@ -23,7 +23,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  config[config.hcl] --> api_gw[api_gw]
+  config[config.yml] --> api_gw[api_gw]
   config --> users_gw[users_gw]
   config --> orders_gw[orders_gw]
   config --> auth_gw[auth_gw]

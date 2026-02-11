@@ -1,22 +1,25 @@
 package types
 
 import (
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 // StandardConfig captures shared settings used to start each service.
 type StandardConfig struct {
-	Env     string          `mapstructure:"env"`
-	Port    int             `mapstructure:"port"`
-	DB      []DBConfig      `mapstructure:"db"`
-	Clients StandardClients `mapstructure:"-"`
+	Env         string          `mapstructure:"env"`
+	Port        int             `mapstructure:"port"`
+	DBConfig    *DBConfig       `mapstructure:"db"`
+	Clients     StandardClients `mapstructure:"-"`
+	RedisConfig *RedisConfig    `mapstructure:"redis"`
 }
 
 // StandardClients provides shared service clients from configuration init.
 type StandardClients struct {
 	Logger *zap.Logger
 	DB     *gorm.DB
+	Redis  *redis.Client
 }
 
 // DBConfig captures database configuration for GORM.
@@ -32,4 +35,19 @@ type DBConfig struct {
 	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
 	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime_sec"`
 	ConnMaxIdleTime int    `mapstructure:"conn_max_idle_time_sec"`
+}
+
+// RedisConfig captures redis connection details.
+type RedisConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}
+
+// InitChecklist controls which standard clients should be initialized.
+type InitChecklist struct {
+	DB              bool
+	Redis           bool
+	AutoMigrateList []any
 }

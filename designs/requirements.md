@@ -97,9 +97,9 @@ Notes:
 
 ## Design Considerations (Pre-Coding)
 
-- **Routing rules**: dynamic routing from `config.hcl`; rules map path patterns to backend services.
-- **Gateway endpoint**: `gw_endpoint` in `config.hcl` defines the public entrypoint for clients.
-- **Configuration**: all services load shared settings (env/port/db) from `config.hcl` via `configuration_manager`.
+- **Routing rules**: dynamic routing from `config.yml`; rules map path patterns to backend services.
+- **Gateway endpoint**: `gw_endpoint` in `config.yml` defines the public entrypoint for clients.
+- **Configuration**: all services load shared settings (env/port/db) from `config.yml` via `configuration_manager`.
 - **Allowed routes**: use gorilla mux path template semantics for token `allowed_routes` matching.
 - **Rate limiting**: use Redis atomic operations (e.g., INCR with TTL) or Lua script for fixed window.
 - **Error mapping**: consistent HTTP responses (401 invalid token, 403 disallowed, 429 rate limit).
