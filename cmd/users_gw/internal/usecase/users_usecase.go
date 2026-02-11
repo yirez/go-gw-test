@@ -1,0 +1,104 @@
+package usecase
+
+import (
+	"errors"
+	"net/http"
+	"strconv"
+
+	"go-gw-test/cmd/users_gw/internal/repo"
+	"go-gw-test/cmd/users_gw/internal/types"
+	"go-gw-test/cmd/users_gw/internal/utils"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+	"gorm.io/gorm"
+)
+
+// UsersUseCaseImpl implements users endpoints and helpers.
+type UsersUseCaseImpl struct {
+	repo repo.UsersRepo
+}
+
+// NewUsersUseCase constructs a UsersUseCase implementation.
+func NewUsersUseCase(usersRepo repo.UsersRepo) *UsersUseCaseImpl {
+	return &UsersUseCaseImpl{
+		repo: usersRepo,
+	}
+}
+
+// ListUsers returns all users.
+func (u *UsersUseCaseImpl) ListUsers(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	users, err := u.repo.ListUsers(ctx)
+	if err != nil {
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to list users"})
+		return
+	}
+
+	resp := mapUsersResponse(users)
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+// GetUser returns a user profile by ID.
+func (u *UsersUseCaseImpl) GetUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idValue := mux.Vars(r)["id"]
+	userID, err := strconv.ParseInt(idValue, 10, 64)
+	if err != nil {
+		zap.L().Error("parse user id", zap.Error(err))
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+		return
+	}
+
+	user, err := u.repo.FindUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			return
+		}
+
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to fetch user"})
+		return
+	}
+
+	resp := types.UserProfileResponse{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+		Phone: user.Phone,
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
+// NotFound returns a JSON 404 response for unmatched routes.
+func (u *UsersUseCaseImpl) NotFound(w http.ResponseWriter, r *http.Request) {
+	utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+}
+
+// LoggingMiddleware emits basic access logs for each request.
+func (u *UsersUseCaseImpl) LoggingMiddleware() mux.MiddlewareFunc {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			zap.L().Info("request",
+				zap.String("method", r.Method),
+				zap.String("path", r.URL.Path),
+			)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// mapUsersResponse maps entities into a list response.
+func mapUsersResponse(users []types.UserProfile) types.UsersResponse {
+	resp := types.UsersResponse{Users: make([]types.UserProfileResponse, 0, len(users))}
+	for _, user := range users {
+		resp.Users = append(resp.Users, types.UserProfileResponse{
+			ID:    user.ID,
+			Name:  user.Name,
+			Email: user.Email,
+			Phone: user.Phone,
+		})
+	}
+
+	return resp
+}
