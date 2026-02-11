@@ -1,25 +1,25 @@
-package handler
+package usecase
 
 import (
-	"go-gw-test/cmd/auth_gw/internal/usecase"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
-// LoggingHandler exposes HTTP handlers for logging.
-type LoggingHandler struct {
-	au usecase.AuthUseCase
+type LoggingUseCase interface {
+	LoggingMiddleware() mux.MiddlewareFunc
 }
 
-// NewLoggingHandler constructs an LoggingHandler.
-func NewLoggingHandler() *LoggingHandler {
-	return &LoggingHandler{}
+type LoggingUseCaseImpl struct {
+}
+
+func NewLoggingUseCaseImpl() *LoggingUseCaseImpl {
+	return &LoggingUseCaseImpl{}
 }
 
 // LoggingMiddleware emits basic access logs for each request.
-func (l *LoggingHandler) LoggingMiddleware() mux.MiddlewareFunc {
+func (u *LoggingUseCaseImpl) LoggingMiddleware() mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			zap.L().Info("request",

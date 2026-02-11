@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
-
-	"go-gw-test/cmd/auth_gw/internal/appservice"
-	"go-gw-test/cmd/auth_gw/internal/types"
-	"go-gw-test/pkg/configuration_manager"
-	cmt "go-gw-test/pkg/configuration_manager/types"
+	g "go-gw-test/cmd/auth_gw/internal/globals"
+	"go-gw-test/cmd/auth_gw/internal/repo"
+	"go-gw-test/cmd/auth_gw/internal/usecase"
+	"time"
 
 	"go-gw-test/pkg/rest_qol"
 
@@ -15,22 +14,13 @@ import (
 
 // main initializes configuration, logger, and starts the auth_gw HTTP server.
 func main() {
+	g.InitConfiguration()
 
-	cfg, err := configuration_manager.InitStandardConfigs(
-		cmt.InitChecklist{
-			DB:              true,
-			Redis:           false,
-			AutoMigrateList: []any{&types.UserRecord{}, &types.ServiceRecord{}},
-		})
-	if err != nil {
-		fmt.Printf("failed init configs: %v\n", err)
-		return
-	}
-	zap.ReplaceGlobals(cfg.Clients.Logger)
+	authRepo := repo.NewAuthRepo(g.Cfg.StandardConfigs.Clients.DB)
+	authUseCase := usecase.NewAuthUseCase(authRepo, g.Cfg.JwtSigningKey, time.Hour)
 
-	app := appservice.NewAppService(cfg)
-
-	err = rest_qol.RunHTTPServer(app.Address(), app.Router())
+	router := NewRouter(authUseCase)
+	err := rest_qol.RunHTTPServer(fmt.Sprintf(":%d", g.Cfg.StandardConfigs.Port), router)
 	if err != nil {
 		zap.L().Error("server shutdown", zap.Error(err))
 	}
