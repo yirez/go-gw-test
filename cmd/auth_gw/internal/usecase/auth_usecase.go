@@ -6,15 +6,16 @@ import (
 	"errors"
 	"fmt"
 	"go-gw-test/cmd/auth_gw/internal/utils"
+	"go-gw-test/pkg/rest_qol"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"go-gw-test/cmd/auth_gw/internal/repo"
 	"go-gw-test/cmd/auth_gw/internal/types"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -146,7 +147,7 @@ func (u *AuthUseCaseImpl) AuthMiddleware() mux.MiddlewareFunc {
 				return
 			}
 
-			token, err := bearerToken(r)
+			token, err := rest_qol.BearerTokenFromRequest(r)
 			if err != nil {
 				zap.L().Error("auth middleware bearer token", zap.Error(err))
 				utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
@@ -165,6 +166,7 @@ func (u *AuthUseCaseImpl) AuthMiddleware() mux.MiddlewareFunc {
 	}
 }
 
+// loginCore validates user credentials and issues user token.
 func (u *AuthUseCaseImpl) loginCore(ctx context.Context, req types.LoginRequest) (types.LoginResponse, error) {
 	user, err := u.repo.FindUserByUsername(ctx, req.Username)
 	if err != nil {
@@ -185,6 +187,7 @@ func (u *AuthUseCaseImpl) loginCore(ctx context.Context, req types.LoginRequest)
 	return types.LoginResponse{Token: token}, nil
 }
 
+// validateTokenCore verifies JWT signature and extracts gateway metadata fields.
 func (u *AuthUseCaseImpl) validateTokenCore(ctx context.Context, token string) (types.ValidateResponse, error) {
 	parsed, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {
 		if token.Method != jwt.SigningMethodHS256 {
@@ -203,8 +206,8 @@ func (u *AuthUseCaseImpl) validateTokenCore(ctx context.Context, token string) (
 		return types.ValidateResponse{}, errors.New("invalid token")
 	}
 
-	subject, ok := claims["sub"].(string)
-	if !ok || subject == "" {
+	apiKey, err := parseAPIKey(claims["jti"])
+	if err != nil {
 		return types.ValidateResponse{}, errors.New("invalid token")
 	}
 
@@ -219,16 +222,18 @@ func (u *AuthUseCaseImpl) validateTokenCore(ctx context.Context, token string) (
 	}
 
 	return types.ValidateResponse{
-		APIKey:    subject,
+		APIKey:    apiKey,
 		Role:      role,
 		ExpiresAt: expiresAt,
 	}, nil
 }
 
+// issueToken creates a signed JWT with a UUID api_key in jti claim.
 func (u *AuthUseCaseImpl) issueToken(tokenType string, subject string, role string) (string, error) {
 	expiresAt := time.Now().UTC().Add(u.tokenTTL)
 	claims := jwt.MapClaims{
 		"sub":        subject,
+		"jti":        uuid.NewString(),
 		"role":       role,
 		"token_type": tokenType,
 		"exp":        expiresAt.Unix(),
@@ -245,6 +250,7 @@ func (u *AuthUseCaseImpl) issueToken(tokenType string, subject string, role stri
 	return signed, nil
 }
 
+// parseExpiry converts JWT exp claim into RFC3339 UTC format.
 func parseExpiry(expClaim any) (string, error) {
 	if expClaim == nil {
 		return "", errors.New("missing exp")
@@ -266,6 +272,25 @@ func parseExpiry(expClaim any) (string, error) {
 	}
 }
 
+// parseAPIKey validates jti claim as UUID and returns it.
+func parseAPIKey(jtiClaim any) (string, error) {
+	jti, ok := jtiClaim.(string)
+	if !ok || jti == "" {
+		err := errors.New("missing jti")
+		zap.L().Error("parse api key from jti", zap.Error(err))
+		return "", err
+	}
+
+	_, err := uuid.Parse(jti)
+	if err != nil {
+		zap.L().Error("parse api key uuid", zap.String("jti", jti), zap.Error(err))
+		return "", err
+	}
+
+	return jti, nil
+}
+
+// parseServiceID parses service id from request payload.
 func parseServiceID(serviceID string) (int64, error) {
 	if serviceID == "" {
 		return 0, errors.New("missing service id")
@@ -280,25 +305,7 @@ func parseServiceID(serviceID string) (int64, error) {
 	return value, nil
 }
 
-func bearerToken(r *http.Request) (string, error) {
-	header := r.Header.Get("Authorization")
-	if header == "" {
-		return "", fmt.Errorf("authorization header missing")
-	}
-
-	const prefix = "Bearer "
-	if !strings.HasPrefix(header, prefix) {
-		return "", fmt.Errorf("invalid authorization header")
-	}
-
-	token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
-	if token == "" {
-		return "", fmt.Errorf("empty bearer token")
-	}
-
-	return token, nil
-}
-
+// isPublicRoute returns true for unprotected auth routes.
 func isPublicRoute(method string, path string) bool {
 	if method == http.MethodOptions {
 		return true

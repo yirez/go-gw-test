@@ -30,6 +30,14 @@ type TokenMetadata struct {
 	AllowedRoutes []string
 }
 
+// RedisTokenRecord represents token metadata as stored in Redis hash fields.
+type RedisTokenRecord struct {
+	APIKey        string `redis:"api_key"`
+	RateLimit     int    `redis:"rate_limit"`
+	ExpiresAt     string `redis:"expires_at"`
+	AllowedRoutes string `redis:"allowed_routes"`
+}
+
 // ServiceTokenRequest captures service-to-service login payload.
 type ServiceTokenRequest struct {
 	ServiceID string `json:"service_id"`
@@ -48,7 +56,7 @@ type ValidateRequest struct {
 
 // ValidateResponse represents auth_gw validate response payload.
 type ValidateResponse struct {
-	APIKey    string `json:"api_key"`
+	APIKey    string `json:"api_key"` // UUID from JWT jti.
 	Role      string `json:"role"`
 	ExpiresAt string `json:"expires_at"`
 }

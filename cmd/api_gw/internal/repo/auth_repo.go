@@ -28,10 +28,10 @@ func ErrTokenNotFound() error {
 
 // AuthRepo defines auth_gw integration operations.
 type AuthRepo interface {
-	ExtractBearerTokenFromRequest(req *http.Request) (string, error)
 	ValidateToken(ctx context.Context, token string) (types.ValidateResponse, error)
 
-	GetToken(ctx context.Context, apiKey string) (types.TokenMetadata, error)
+	GetTokenMetaFromRedis(ctx context.Context, apiKey string) (types.TokenMetadata, error)
+	SetToken(ctx context.Context, metadata types.TokenMetadata) error
 	TouchExpiry(ctx context.Context, apiKey string, expiresAt time.Time) error
 }
 
@@ -65,28 +65,10 @@ func (r *AuthRepoImpl) ValidateToken(ctx context.Context, token string) (types.V
 		return types.ValidateResponse{}, err
 	}
 
-	resp, err := r.validateWithServiceToken(ctx, token, serviceToken)
-	if err == nil {
-		return resp, nil
-	}
-	if !errors.Is(err, errUnauthorized) {
-		return types.ValidateResponse{}, err
-	}
-
-	if refreshErr := r.refreshServiceToken(ctx); refreshErr != nil {
-		zap.L().Error("refresh service token", zap.Error(refreshErr))
-		return types.ValidateResponse{}, refreshErr
-	}
-
-	serviceToken, err = r.getServiceToken(ctx)
-	if err != nil {
-		zap.L().Error("get refreshed service token", zap.Error(err))
-		return types.ValidateResponse{}, err
-	}
-
 	return r.validateWithServiceToken(ctx, token, serviceToken)
 }
 
+// validateWithServiceToken calls auth_gw validate endpoint using service bearer token.
 func (r *AuthRepoImpl) validateWithServiceToken(ctx context.Context, token string, serviceToken string) (types.ValidateResponse, error) {
 	payload, err := json.Marshal(types.ValidateRequest{Token: token})
 	if err != nil {
@@ -128,6 +110,7 @@ func (r *AuthRepoImpl) validateWithServiceToken(ctx context.Context, token strin
 	return resp, nil
 }
 
+// getServiceToken returns cached service token or fetches a new one.
 func (r *AuthRepoImpl) getServiceToken(ctx context.Context) (string, error) {
 	r.tokenMu.Lock()
 	defer r.tokenMu.Unlock()
@@ -141,6 +124,7 @@ func (r *AuthRepoImpl) getServiceToken(ctx context.Context) (string, error) {
 	return r.serviceToken, nil
 }
 
+// refreshServiceToken refreshes cached service token with synchronization.
 func (r *AuthRepoImpl) refreshServiceToken(ctx context.Context) error {
 	r.tokenMu.Lock()
 	defer r.tokenMu.Unlock()
@@ -190,27 +174,8 @@ func (r *AuthRepoImpl) refreshServiceTokenLocked(ctx context.Context) error {
 	return nil
 }
 
-func (r *AuthRepoImpl) ExtractBearerTokenFromRequest(req *http.Request) (string, error) {
-	header := req.Header.Get("Authorization")
-	if header == "" {
-		return "", errors.New("authorization header missing")
-	}
-
-	const prefix = "Bearer "
-	if !strings.HasPrefix(header, prefix) {
-		return "", errors.New("invalid authorization header")
-	}
-
-	token := strings.TrimSpace(strings.TrimPrefix(header, prefix))
-	if token == "" {
-		return "", errors.New("empty bearer token")
-	}
-
-	return token, nil
-}
-
-// GetToken fetches token metadata from Redis.
-func (r *AuthRepoImpl) GetToken(ctx context.Context, apiKey string) (types.TokenMetadata, error) {
+// GetTokenMetaFromRedis fetches token metadata from Redis.
+func (r *AuthRepoImpl) GetTokenMetaFromRedis(ctx context.Context, apiKey string) (types.TokenMetadata, error) {
 	key := tokenKey(apiKey)
 	values, err := r.redisClient.HGetAll(ctx, key).Result()
 	if err != nil {
@@ -260,10 +225,42 @@ func (r *AuthRepoImpl) TouchExpiry(ctx context.Context, apiKey string, expiresAt
 	return nil
 }
 
+// SetToken writes token metadata to Redis and aligns key expiry with token expiry.
+func (r *AuthRepoImpl) SetToken(ctx context.Context, metadata types.TokenMetadata) error {
+	key := tokenKey(metadata.APIKey)
+	allowedRoutesJSON, err := json.Marshal(metadata.AllowedRoutes)
+	if err != nil {
+		zap.L().Error("marshal allowed_routes", zap.String("api_key", metadata.APIKey), zap.Error(err))
+		return err
+	}
+
+	record := types.RedisTokenRecord{
+		APIKey:        metadata.APIKey,
+		RateLimit:     metadata.RateLimit,
+		ExpiresAt:     metadata.ExpiresAt.UTC().Format(time.RFC3339),
+		AllowedRoutes: string(allowedRoutesJSON),
+	}
+
+	err = r.redisClient.HSet(ctx, key, record).Err()
+	if err != nil {
+		zap.L().Error("redis hset token metadata", zap.String("key", key), zap.Error(err))
+		return err
+	}
+
+	err = r.TouchExpiry(ctx, metadata.APIKey, metadata.ExpiresAt.UTC())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// tokenKey builds redis key for token metadata.
 func tokenKey(apiKey string) string {
 	return fmt.Sprintf("token:%s", apiKey)
 }
 
+// parseAllowedRoutes parses allowed_routes from JSON array or CSV fallback.
 func parseAllowedRoutes(raw string) []string {
 	if raw == "" {
 		zap.L().Error("allowed_routes empty")
@@ -291,6 +288,7 @@ func parseAllowedRoutes(raw string) []string {
 	return routes
 }
 
+// parseInt parses integer field from Redis string value.
 func parseInt(value string) int {
 	if value == "" {
 		zap.L().Warn("rate_limit missing; defaulting to zero")

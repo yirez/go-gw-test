@@ -5,12 +5,14 @@ import (
 	"errors"
 	"go-gw-test/cmd/api_gw/internal/repo"
 	"go-gw-test/cmd/api_gw/internal/utils"
+	"go-gw-test/pkg/rest_qol"
 	"net/http"
 	"strings"
 	"time"
 
 	"go-gw-test/cmd/api_gw/internal/types"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
@@ -55,23 +57,21 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 				return
 			}
 
-			clientToken, err := u.ar.ExtractBearerTokenFromRequest(r)
+			clientToken, err := rest_qol.BearerTokenFromRequest(r)
 			if err != nil {
-				zap.L().Warn("missing bearer token", zap.Error(err))
 				utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 				return
 			}
 
 			validateResp, err := u.ValidateToken(r.Context(), clientToken)
 			if err != nil {
-				zap.L().Warn("token validation failed", zap.Error(err))
 				utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 				return
 			}
 
 			apiKey := validateResp.APIKey
-			if apiKey == "" {
-				zap.L().Warn("token validation returned empty api_key")
+			if _, err = uuid.Parse(apiKey); err != nil {
+				zap.L().Warn("token validation returned invalid api_key", zap.String("api_key", apiKey), zap.Error(err))
 				utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 				return
 			}
@@ -83,17 +83,30 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 				return
 			}
 
-			metadata, err := u.ar.GetToken(r.Context(), apiKey)
+			// token valid at this point
+			metadata, err := u.ar.GetTokenMetaFromRedis(r.Context(), apiKey)
 			if err != nil {
+				// no key for newly minted token, prep one with roles and allowed routes
 				if errors.Is(err, repo.ErrTokenNotFound()) {
-					utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+					metadata, err = u.buildDefaultTokenMetadata(apiKey, validateResp.Role, expiresAt)
+					if err != nil {
+						utils.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+						return
+					}
+
+					err = u.ar.SetToken(r.Context(), metadata)
+					if err != nil {
+						utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "token initialization failed"})
+						return
+					}
+				} else {
+					utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "token lookup failed"})
 					return
 				}
-				utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "token lookup failed"})
-				return
 			}
 
-			if err = u.ar.TouchExpiry(r.Context(), apiKey, expiresAt); err != nil {
+			err = u.ar.TouchExpiry(r.Context(), apiKey, expiresAt)
+			if err != nil {
 				utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "token expiry sync failed"})
 				return
 			}
@@ -125,4 +138,37 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// buildDefaultTokenMetadata constructs fallback Redis token metadata from role permissions.
+func (u *AuthUseCaseImpl) buildDefaultTokenMetadata(apiKey string, role string, expiresAt time.Time) (types.TokenMetadata, error) {
+	allowedRoutes := make([]string, 0)
+	maxRateLimit := 0
+	seenRoutes := make(map[string]struct{})
+
+	for _, route := range u.routes {
+		if !u.gr.IsRoleAllowed(route.Config.AllowedRole, role) {
+			continue
+		}
+
+		if _, ok := seenRoutes[route.Config.GwEndpoint]; !ok {
+			seenRoutes[route.Config.GwEndpoint] = struct{}{}
+			allowedRoutes = append(allowedRoutes, route.Config.GwEndpoint)
+		}
+		if route.Config.RateLimitReqPerSec > maxRateLimit {
+			maxRateLimit = route.Config.RateLimitReqPerSec
+		}
+	}
+
+	if len(allowedRoutes) == 0 {
+		zap.L().Warn("no allowed routes for role", zap.String("role", role), zap.String("api_key", apiKey))
+		return types.TokenMetadata{}, errors.New("no allowed routes for role")
+	}
+
+	return types.TokenMetadata{
+		APIKey:        apiKey,
+		RateLimit:     maxRateLimit,
+		ExpiresAt:     expiresAt.UTC(),
+		AllowedRoutes: allowedRoutes,
+	}, nil
 }

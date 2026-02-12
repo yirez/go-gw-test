@@ -27,7 +27,7 @@ func NewRateLimiter(client *redis.Client) *RateLimiterImpl {
 // Increment increments the rate counter for the current second.
 func (r *RateLimiterImpl) Increment(ctx context.Context, apiKey string, endpointKey string) (int64, time.Time, error) {
 	now := time.Now().UTC()
-	window := now.Unix()
+	window := now.Unix() // unix second, since our rate limit is per second, this works.
 	key := fmt.Sprintf("rl:%s:%s:%d", apiKey, endpointKey, window)
 
 	pipe := r.client.Pipeline()

@@ -56,7 +56,7 @@ This document captures the core requirements and a proposed structure for the AP
 
 ```
 {
-  "api_key": "xxx-xxx-xxx",
+  "api_key": "550e8400-e29b-41d4-a716-446655440000",
   "rate_limit": 100,
   "expires_at": "2024-12-31T23:59:59Z",
   "allowed_routes": ["/api/v1/users/{id}", "/api/v1/users/{id}/contact", "/api/v1/orders/{id}", "/api/v1/orders/{id}/details"]
@@ -105,6 +105,7 @@ Notes:
 - **Error mapping**: consistent HTTP responses (401 invalid token, 403 disallowed, 429 rate limit).
 - **Observability**: structured logs with request id; metrics endpoint for Prometheus scraping.
 - **Auth service**: `auth_gw` issues and validates tokens. JWT signing key derived from system clock; TTL = 1 hour. `api_gw` delegates token validation to `auth_gw`.
+- **API key shape**: `auth_gw` sets JWT `jti` as a UUID and `api_gw` uses it as `api_key` in Redis (`token:{api_key}`).
 - **Service-to-service tokens**: each service (except `auth_gw`) generates a token for itself; `api_gw` is the primary auth gatekeeper for incoming requests.
 - **Config and logging**: all apps call `configuration_manager` `InitStandardConfigs` to load env/port, initialize a zap logger, and (when configured) return a GORM Postgres connection before starting the REST server.
 - **Concurrency**: ensure per-request token fetch and rate limit checks are safe and efficient.

@@ -29,7 +29,7 @@ type ValidateRequest struct {
 
 // ValidateResponse captures token metadata for gateway checks.
 type ValidateResponse struct {
-	APIKey    string `json:"api_key"`
+	APIKey    string `json:"api_key"` // UUID from JWT jti.
 	Role      string `json:"role"`
 	ExpiresAt string `json:"expires_at"`
 }
