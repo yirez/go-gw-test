@@ -1,5 +1,6 @@
 .DS_Store
 .idea
 
+config.yml
 *.exe
-cmd/auth_gw/config.yml
+

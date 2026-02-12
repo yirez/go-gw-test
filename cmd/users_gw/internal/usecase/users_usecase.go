@@ -117,19 +117,6 @@ func (u *UsersUseCaseImpl) NotFound(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 }
 
-// LoggingMiddleware emits basic access logs for each request.
-func (u *UsersUseCaseImpl) LoggingMiddleware() mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			zap.L().Info("request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-			)
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 // mapUsersResponse maps entities into a list response.
 func mapUsersResponse(users []types.UserProfile) types.UsersResponse {
 	resp := types.UsersResponse{Users: make([]types.UserProfileResponse, 0, len(users))}

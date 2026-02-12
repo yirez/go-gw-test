@@ -24,6 +24,7 @@ func NewRouter() http.Handler {
 	}
 
 	usersUseCase := usecase.NewUsersUseCase(usersRepo)
+	loggingUseCase := usecase.NewLoggingUseCaseImpl()
 
 	router := mux.NewRouter()
 
@@ -36,7 +37,7 @@ func NewRouter() http.Handler {
 	router.HandleFunc("/api/v1/users/{id}/contact", usersUseCase.GetContactInfo).Methods(http.MethodGet)
 
 	router.NotFoundHandler = http.HandlerFunc(usersUseCase.NotFound)
-	router.Use(usersUseCase.LoggingMiddleware())
+	router.Use(loggingUseCase.LoggingMiddleware())
 
 	return router
 }

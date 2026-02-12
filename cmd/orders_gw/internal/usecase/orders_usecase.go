@@ -106,19 +106,6 @@ func (u *OrdersUseCaseImpl) NotFound(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
 }
 
-// LoggingMiddleware emits basic access logs for each request.
-func (u *OrdersUseCaseImpl) LoggingMiddleware() mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			zap.L().Info("request",
-				zap.String("method", r.Method),
-				zap.String("path", r.URL.Path),
-			)
-			next.ServeHTTP(w, r)
-		})
-	}
-}
-
 // mapOrdersResponse maps entities into a list response.
 func mapOrdersResponse(orders []types.OrderRecord) types.OrdersResponse {
 	resp := types.OrdersResponse{Orders: make([]types.OrderResponse, 0, len(orders))}

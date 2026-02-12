@@ -3,21 +3,37 @@ port: 8085
 
 auth:
   endpoint: "http://localhost:8084"
+  service_id: "1"
+  secret: "123"
 
 endpoint_configuration:
-  - live_endpoint: "http://localhost:8086" # user service
+  - live_endpoint: "http://localhost:8087" # users service
     live_timeout_sec: 60
-    gw_endpoint: "/v1/users"
+    gw_endpoint: "/api/v1/users"
     rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8086" # user service
+  - live_endpoint: "http://localhost:8087" # users service
     live_timeout_sec: 60
-    gw_endpoint: "/v1/users/??/contact"
+    gw_endpoint: "/api/v1/users/{id}"
     rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8087" # orders service
+  - live_endpoint: "http://localhost:8087" # users service
     live_timeout_sec: 60
-    gw_endpoint: "/v1/orders"
+    gw_endpoint: "/api/v1/users/{id}/contact"
     rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8087" # orders service
+  - live_endpoint: "http://localhost:8086" # orders service
     live_timeout_sec: 60
-    gw_endpoint: "/v1/orders/??/details"
+    gw_endpoint: "/api/v1/orders"
     rate_limit_req_per_sec: 5
+  - live_endpoint: "http://localhost:8086" # orders service
+    live_timeout_sec: 60
+    gw_endpoint: "/api/v1/orders/{id}"
+    rate_limit_req_per_sec: 5
+  - live_endpoint: "http://localhost:8086" # orders service
+    live_timeout_sec: 60
+    gw_endpoint: "/api/v1/orders/{id}/items"
+    rate_limit_req_per_sec: 5
+
+redis:
+  host: "localhost"
+  port: 6379
+  password: ""
+  db: 0
