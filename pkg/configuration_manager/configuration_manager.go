@@ -37,6 +37,12 @@ func InitStandardConfigs(initCheckList types.InitChecklist) (types.StandardConfi
 	}
 	cfg.Clients.Logger = logger
 
+	if initCheckList.Auth && cfg.AuthConfig == nil {
+		err = fmt.Errorf("auth not configured")
+		log.Printf("init auth: %v", err)
+		return types.StandardConfig{}, err
+	}
+
 	var db *gorm.DB
 	if initCheckList.DB {
 		db, err = initDB(cfg.DBConfig)
@@ -56,7 +62,8 @@ func InitStandardConfigs(initCheckList types.InitChecklist) (types.StandardConfi
 	}
 
 	var redisClient *redis.Client
-	if initCheckList.Redis {
+	shouldInitRedis := initCheckList.Redis || cfg.RedisConfig != nil
+	if shouldInitRedis {
 		redisClient = newRedisClient(cfg.RedisConfig)
 		if redisClient == nil {
 			err = fmt.Errorf("redis not configured")

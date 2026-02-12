@@ -9,28 +9,14 @@ auth:
 endpoint_configuration:
   - live_endpoint: "http://localhost:8087" # users service
     live_timeout_sec: 60
-    gw_endpoint: "/api/v1/users"
+    gw_endpoint: "/api/v1/users/*"
     rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8087" # users service
-    live_timeout_sec: 60
-    gw_endpoint: "/api/v1/users/{id}"
-    rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8087" # users service
-    live_timeout_sec: 60
-    gw_endpoint: "/api/v1/users/{id}/contact"
-    rate_limit_req_per_sec: 5
+    allowed_role: ["user_all","user_users"]
   - live_endpoint: "http://localhost:8086" # orders service
     live_timeout_sec: 60
-    gw_endpoint: "/api/v1/orders"
+    gw_endpoint: "/api/v1/orders/*"
     rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8086" # orders service
-    live_timeout_sec: 60
-    gw_endpoint: "/api/v1/orders/{id}"
-    rate_limit_req_per_sec: 5
-  - live_endpoint: "http://localhost:8086" # orders service
-    live_timeout_sec: 60
-    gw_endpoint: "/api/v1/orders/{id}/items"
-    rate_limit_req_per_sec: 5
+    allowed_role: ["user_all","user_orders"]
 
 redis:
   host: "localhost"

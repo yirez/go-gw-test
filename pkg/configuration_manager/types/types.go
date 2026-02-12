@@ -11,6 +11,7 @@ type StandardConfig struct {
 	Env         string          `mapstructure:"env"`
 	Port        int             `mapstructure:"port"`
 	DBConfig    *DBConfig       `mapstructure:"db"`
+	AuthConfig  *AuthConfig     `mapstructure:"auth"`
 	Clients     StandardClients `mapstructure:"-"`
 	RedisConfig *RedisConfig    `mapstructure:"redis"`
 }
@@ -45,9 +46,17 @@ type RedisConfig struct {
 	DB       int    `mapstructure:"db"`
 }
 
+// AuthConfig captures auth service connection details.
+type AuthConfig struct {
+	Endpoint  string `mapstructure:"endpoint"`
+	ServiceID string `mapstructure:"service_id"`
+	Secret    string `mapstructure:"secret"`
+}
+
 // InitChecklist controls which standard clients should be initialized.
 type InitChecklist struct {
 	DB              bool
+	Auth            bool
 	Redis           bool
 	AutoMigrateList []any
 }

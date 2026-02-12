@@ -15,8 +15,15 @@ import (
 func NewRouter() http.Handler {
 	rateLimiter := repo.NewRateLimiter(g.Cfg.StandardConfigs.Clients.Redis)
 	gatewayRepo := repo.NewGatewayRepo()
-	authRepo := repo.NewAuthRepo(g.Cfg.Auth.Endpoint, g.Cfg.Auth.ServiceID, g.Cfg.Auth.Secret, g.Cfg.StandardConfigs.Clients.Redis)
-	authUseCase := usecase.NewAuthUseCase(authRepo, gatewayRepo)
+	authRepo := repo.NewAuthRepo(
+		g.Cfg.StandardConfigs.AuthConfig.Endpoint,
+		g.Cfg.StandardConfigs.AuthConfig.ServiceID,
+		g.Cfg.StandardConfigs.AuthConfig.Secret,
+		g.Cfg.StandardConfigs.Clients.Redis)
+	authUseCase, err := usecase.NewAuthUseCase(authRepo, gatewayRepo, g.Cfg.EndpointConfiguration)
+	if err != nil {
+		zap.L().Fatal("init auth usecase", zap.Error(err))
+	}
 
 	gatewayUseCase, err := usecase.NewGatewayUseCase(rateLimiter, gatewayRepo, g.Cfg.EndpointConfiguration)
 	if err != nil {

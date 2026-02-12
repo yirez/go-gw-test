@@ -5,30 +5,21 @@ import (
 	"time"
 
 	cmt "go-gw-test/pkg/configuration_manager/types"
-
-	"github.com/gorilla/mux"
 )
 
 // AppConfig wraps api_gw configuration and standard configs.
 type AppConfig struct {
 	StandardConfigs       cmt.StandardConfig
-	Auth                  AuthConfig
 	EndpointConfiguration []EndpointConfig
-}
-
-// AuthConfig captures auth service configuration.
-type AuthConfig struct {
-	Endpoint  string `mapstructure:"endpoint"`
-	ServiceID string `mapstructure:"service_id"`
-	Secret    string `mapstructure:"secret"`
 }
 
 // EndpointConfig defines gateway routing rules.
 type EndpointConfig struct {
-	LiveEndpoint       string `mapstructure:"live_endpoint"`
-	LiveTimeoutSec     int    `mapstructure:"live_timeout_sec"`
-	GwEndpoint         string `mapstructure:"gw_endpoint"`
-	RateLimitReqPerSec int    `mapstructure:"rate_limit_req_per_sec"`
+	LiveEndpoint       string   `mapstructure:"live_endpoint"`
+	LiveTimeoutSec     int      `mapstructure:"live_timeout_sec"`
+	GwEndpoint         string   `mapstructure:"gw_endpoint"`
+	RateLimitReqPerSec int      `mapstructure:"rate_limit_req_per_sec"`
+	AllowedRole        []string `mapstructure:"allowed_role"`
 }
 
 // TokenMetadata represents token data stored in Redis.
@@ -65,7 +56,6 @@ type ValidateResponse struct {
 // RouteEntry holds compiled routing data.
 type RouteEntry struct {
 	Config  EndpointConfig
-	Route   *mux.Route
 	Proxy   *httputil.ReverseProxy
 	RateKey string
 }

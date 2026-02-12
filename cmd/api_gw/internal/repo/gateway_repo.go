@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +20,7 @@ type GatewayRepo interface {
 	BuildRouteEntries(configs []types.EndpointConfig) ([]types.RouteEntry, error)
 	MatchRoute(routes []types.RouteEntry, r *http.Request) (types.RouteEntry, bool)
 	IsAllowedRoute(allowed []string, r *http.Request) bool
+	IsRoleAllowed(allowedRoles []string, role string) bool
 }
 
 // GatewayRepoImpl implements GatewayRepo.
@@ -35,9 +35,6 @@ func NewGatewayRepo() *GatewayRepoImpl {
 func (g *GatewayRepoImpl) BuildRouteEntries(configs []types.EndpointConfig) ([]types.RouteEntry, error) {
 	routes := make([]types.RouteEntry, 0, len(configs))
 	for _, cfg := range configs {
-		pattern := normalizePattern(cfg.GwEndpoint)
-		route := mux.NewRouter().NewRoute().Path(pattern)
-
 		proxy, err := newReverseProxy(cfg.LiveEndpoint, cfg.LiveTimeoutSec)
 		if err != nil {
 			zap.L().Error("build reverse proxy", zap.String("live_endpoint", cfg.LiveEndpoint), zap.Error(err))
@@ -46,7 +43,6 @@ func (g *GatewayRepoImpl) BuildRouteEntries(configs []types.EndpointConfig) ([]t
 
 		routes = append(routes, types.RouteEntry{
 			Config:  cfg,
-			Route:   route,
 			Proxy:   proxy,
 			RateKey: sanitizeRateKey(cfg.GwEndpoint),
 		})
@@ -59,10 +55,9 @@ func (g *GatewayRepoImpl) BuildRouteEntries(configs []types.EndpointConfig) ([]t
 func (g *GatewayRepoImpl) MatchRoute(routes []types.RouteEntry, r *http.Request) (types.RouteEntry, bool) {
 	var matched types.RouteEntry
 	bestScore := -1
-	match := &mux.RouteMatch{}
 
 	for _, entry := range routes {
-		if entry.Route.Match(r, match) {
+		if matchPathPattern(entry.Config.GwEndpoint, r.URL.Path) {
 			score := len(strings.Split(entry.Config.GwEndpoint, "/"))
 			if score > bestScore {
 				bestScore = score
@@ -81,27 +76,52 @@ func (g *GatewayRepoImpl) MatchRoute(routes []types.RouteEntry, r *http.Request)
 // IsAllowedRoute validates whether request path matches one of allowed route patterns.
 func (g *GatewayRepoImpl) IsAllowedRoute(allowed []string, r *http.Request) bool {
 	for _, pattern := range allowed {
-		route := mux.NewRouter().NewRoute().Path(pattern)
-		if route.Match(r, &mux.RouteMatch{}) {
+		if matchPathPattern(pattern, r.URL.Path) {
 			return true
 		}
 	}
 	return false
 }
 
-func normalizePattern(pattern string) string {
-	parts := strings.Split(pattern, "/")
-	for i, part := range parts {
-		if part == "??" {
-			parts[i] = "{param" + strconv.Itoa(i) + "}"
+// IsRoleAllowed validates whether role belongs to the configured allowed roles.
+func (g *GatewayRepoImpl) IsRoleAllowed(allowedRoles []string, role string) bool {
+	if len(allowedRoles) == 0 {
+		return true
+	}
+
+	for _, allowedRole := range allowedRoles {
+		if allowedRole == role {
+			return true
 		}
 	}
-	return strings.Join(parts, "/")
+	return false
 }
 
 func sanitizeRateKey(pattern string) string {
 	replacer := strings.NewReplacer("/", "-", "{", "", "}", "", "?", "", "*", "")
 	return replacer.Replace(pattern)
+}
+
+func matchPathPattern(pattern string, path string) bool {
+	if pattern == "" {
+		return false
+	}
+	if pattern == path {
+		return true
+	}
+
+	// Wildcard prefix style: /api/v1/users/*
+	if strings.HasSuffix(pattern, "/*") {
+		base := strings.TrimSuffix(pattern, "/*")
+		if path == base {
+			return true
+		}
+		prefix := base + "/"
+		return strings.HasPrefix(path, prefix)
+	}
+
+	route := mux.NewRouter().NewRoute().Path(pattern)
+	return route.Match(&http.Request{URL: &url.URL{Path: path}}, &mux.RouteMatch{})
 }
 
 func newReverseProxy(target string, timeoutSec int) (*httputil.ReverseProxy, error) {

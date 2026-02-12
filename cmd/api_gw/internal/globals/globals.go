@@ -18,18 +18,12 @@ func InitConfiguration() {
 	var err error
 	Cfg.StandardConfigs, err = configuration_manager.InitStandardConfigs(
 		cmt.InitChecklist{
-			DB:              false,
+			Auth:            true,
 			Redis:           true,
 			AutoMigrateList: nil,
 		})
 	if err != nil {
 		fmt.Printf("failed init configs: %v\n", err)
-		os.Exit(1)
-	}
-
-	err = configuration_manager.ReadCustomConfig("auth", &Cfg.Auth)
-	if err != nil {
-		fmt.Printf("failed load auth config: %v\n", err)
 		os.Exit(1)
 	}
 

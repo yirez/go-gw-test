@@ -17,8 +17,9 @@ import (
 
 // AuthUseCaseImpl calls auth_gw for token validation.
 type AuthUseCaseImpl struct {
-	ar repo.AuthRepo
-	gr repo.GatewayRepo
+	ar     repo.AuthRepo
+	gr     repo.GatewayRepo
+	routes []types.RouteEntry
 }
 
 type AuthUseCase interface {
@@ -27,11 +28,17 @@ type AuthUseCase interface {
 }
 
 // NewAuthUseCase constructs an AuthUseCaseImpl.
-func NewAuthUseCase(ar repo.AuthRepo, gr repo.GatewayRepo) AuthUseCase {
-	return &AuthUseCaseImpl{
-		ar: ar,
-		gr: gr,
+func NewAuthUseCase(ar repo.AuthRepo, gr repo.GatewayRepo, endpointConfigs []types.EndpointConfig) (AuthUseCase, error) {
+	routes, err := gr.BuildRouteEntries(endpointConfigs)
+	if err != nil {
+		return nil, err
 	}
+
+	return &AuthUseCaseImpl{
+		ar:     ar,
+		gr:     gr,
+		routes: routes,
+	}, nil
 }
 
 // ValidateToken validates a token via auth_gw and returns metadata.
@@ -98,6 +105,17 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 			}
 
 			if !u.gr.IsAllowedRoute(metadata.AllowedRoutes, r) {
+				utils.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
+				return
+			}
+
+			entry, ok := u.gr.MatchRoute(u.routes, r)
+			if !ok {
+				utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "route not found"})
+				return
+			}
+
+			if !u.gr.IsRoleAllowed(entry.Config.AllowedRole, validateResp.Role) {
 				utils.WriteJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 				return
 			}
