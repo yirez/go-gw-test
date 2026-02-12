@@ -70,6 +70,48 @@ func (u *UsersUseCaseImpl) GetUser(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusOK, resp)
 }
 
+// GetContactInfo returns the stored contact info for a user.
+func (u *UsersUseCaseImpl) GetContactInfo(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	idValue := mux.Vars(r)["id"]
+	userID, err := strconv.ParseInt(idValue, 10, 64)
+	if err != nil {
+		zap.L().Error("parse user id", zap.Error(err))
+		utils.WriteJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user id"})
+		return
+	}
+
+	_, err = u.repo.FindUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "user not found"})
+			return
+		}
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to fetch user"})
+		return
+	}
+
+	info, err := u.repo.GetContactInfo(ctx, userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "contact info not found"})
+			return
+		}
+		utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to fetch contact info"})
+		return
+	}
+
+	resp := types.ContactInfoResponse{
+		UserID:       info.UserID,
+		Email:        info.Email,
+		Phone:        info.Phone,
+		AddressLine1: info.AddressLine1,
+		City:         info.City,
+		Country:      info.Country,
+	}
+	utils.WriteJSON(w, http.StatusOK, resp)
+}
+
 // NotFound returns a JSON 404 response for unmatched routes.
 func (u *UsersUseCaseImpl) NotFound(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})

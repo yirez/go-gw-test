@@ -33,6 +33,7 @@ func NewRouter() http.Handler {
 
 	router.HandleFunc("/api/v1/users", usersUseCase.ListUsers).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/users/{id}", usersUseCase.GetUser).Methods(http.MethodGet)
+	router.HandleFunc("/api/v1/users/{id}/contact", usersUseCase.GetContactInfo).Methods(http.MethodGet)
 
 	router.NotFoundHandler = http.HandlerFunc(usersUseCase.NotFound)
 	router.Use(usersUseCase.LoggingMiddleware())

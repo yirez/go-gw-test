@@ -20,7 +20,7 @@ func InitConfiguration() {
 		cmt.InitChecklist{
 			DB:              true,
 			Redis:           false,
-			AutoMigrateList: []any{&types.OrderRecord{}},
+			AutoMigrateList: []any{&types.OrderRecord{}, &types.OrderItem{}},
 		})
 	if err != nil {
 		fmt.Printf("failed init configs: %v\n", err)

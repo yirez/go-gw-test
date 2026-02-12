@@ -12,3 +12,13 @@ type UserProfileResponse struct {
 type UsersResponse struct {
 	Users []UserProfileResponse `json:"users"`
 }
+
+// ContactInfoResponse represents a stored contact-info payload.
+type ContactInfoResponse struct {
+	UserID       int64  `json:"user_id"`
+	Email        string `json:"email"`
+	Phone        string `json:"phone"`
+	AddressLine1 string `json:"address_line1"`
+	City         string `json:"city"`
+	Country      string `json:"country"`
+}

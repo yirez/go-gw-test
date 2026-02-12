@@ -13,6 +13,7 @@ import (
 type UsersRepo interface {
 	ListUsers(ctx context.Context) ([]types.UserProfile, error)
 	FindUserByID(ctx context.Context, userID int64) (types.UserProfile, error)
+	GetContactInfo(ctx context.Context, userID int64) (types.UserContactInfo, error)
 	SeedIfEmpty(ctx context.Context) error
 }
 
@@ -52,6 +53,18 @@ func (r *UsersRepoImpl) FindUserByID(ctx context.Context, userID int64) (types.U
 	return user, nil
 }
 
+// GetContactInfo returns contact info for a user.
+func (r *UsersRepoImpl) GetContactInfo(ctx context.Context, userID int64) (types.UserContactInfo, error) {
+	var info types.UserContactInfo
+	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&info).Error
+	if err != nil {
+		zap.L().Error("find contact info", zap.Error(err))
+		return types.UserContactInfo{}, err
+	}
+
+	return info, nil
+}
+
 // SeedIfEmpty inserts sample user profiles when no records exist.
 func (r *UsersRepoImpl) SeedIfEmpty(ctx context.Context) error {
 	var count int64
@@ -61,19 +74,40 @@ func (r *UsersRepoImpl) SeedIfEmpty(ctx context.Context) error {
 		return err
 	}
 
-	if count > 0 {
+	if count == 0 {
+		seedUsers := []types.UserProfile{
+			{ID: 1, Name: "Ayla Demir", Email: "ayla@example.com", Phone: "+90-555-0101"},
+			{ID: 2, Name: "Kerem Kaya", Email: "kerem@example.com", Phone: "+90-555-0102"},
+			{ID: 3, Name: "Deniz Acar", Email: "deniz@example.com", Phone: "+90-555-0103"},
+		}
+
+		err = r.db.WithContext(ctx).Create(&seedUsers).Error
+		if err != nil {
+			zap.L().Error("seed users", zap.Error(err))
+			return err
+		}
+	}
+
+	var contactCount int64
+	err = r.db.WithContext(ctx).Model(&types.UserContactInfo{}).Count(&contactCount).Error
+	if err != nil {
+		zap.L().Error("count contact info", zap.Error(err))
+		return err
+	}
+
+	if contactCount > 0 {
 		return nil
 	}
 
-	seed := []types.UserProfile{
-		{ID: 1, Name: "Ayla Demir", Email: "ayla@example.com", Phone: "+90-555-0101"},
-		{ID: 2, Name: "Kerem Kaya", Email: "kerem@example.com", Phone: "+90-555-0102"},
-		{ID: 3, Name: "Deniz Acar", Email: "deniz@example.com", Phone: "+90-555-0103"},
+	seedContacts := []types.UserContactInfo{
+		{UserID: 1, Email: "ayla@example.com", Phone: "+90-555-0101", AddressLine1: "101 Elm St", City: "Istanbul", Country: "TR"},
+		{UserID: 2, Email: "kerem@example.com", Phone: "+90-555-0102", AddressLine1: "22 Pine Ave", City: "Ankara", Country: "TR"},
+		{UserID: 3, Email: "deniz@example.com", Phone: "+90-555-0103", AddressLine1: "8 Oak Blvd", City: "Izmir", Country: "TR"},
 	}
 
-	err = r.db.WithContext(ctx).Create(&seed).Error
+	err = r.db.WithContext(ctx).Create(&seedContacts).Error
 	if err != nil {
-		zap.L().Error("seed users", zap.Error(err))
+		zap.L().Error("seed contact info", zap.Error(err))
 		return err
 	}
 
