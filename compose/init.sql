@@ -1,3 +1,9 @@
+CREATE DATABASE "auth";
+CREATE DATABASE "order";
+CREATE DATABASE "user";
+
+\connect auth
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE IF NOT EXISTS user_records (

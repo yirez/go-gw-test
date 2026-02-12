@@ -4,7 +4,7 @@ port: 8084
 db:
   host: "localhost"
   port: 5432
-  name: "app"
+  name: "auth"
   user: "app"
   password: "app"
   sslmode: "disable"

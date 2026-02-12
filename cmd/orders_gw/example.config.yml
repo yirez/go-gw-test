@@ -4,7 +4,7 @@ port: 8086
 db:
   host: "localhost"
   port: 5432
-  name: "app"
+  name: "order"
   user: "app"
   password: "app"
   sslmode: "disable"
