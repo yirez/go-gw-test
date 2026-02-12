@@ -59,7 +59,7 @@ This document captures the core requirements and a proposed structure for the AP
   "api_key": "550e8400-e29b-41d4-a716-446655440000",
   "rate_limit": 100,
   "expires_at": "2024-12-31T23:59:59Z",
-  "allowed_routes": ["/api/v1/users/{id}", "/api/v1/users/{id}/contact", "/api/v1/orders/{id}", "/api/v1/orders/{id}/details"]
+  "allowed_routes": ["/api/v1/users/*", "/api/v1/orders/*"]
 }
 ```
 
@@ -100,7 +100,8 @@ Notes:
 - **Routing rules**: dynamic routing from `config.yml`; rules map path patterns to backend services.
 - **Gateway endpoint**: `gw_endpoint` in `config.yml` defines the public entrypoint for clients.
 - **Configuration**: all services load shared settings (env/port/db) from `config.yml` via `configuration_manager`.
-- **Allowed routes**: use gorilla mux path template semantics for token `allowed_routes` matching.
+- **Allowed routes**: use exact or prefix wildcard patterns (e.g., `/api/v1/users/*`) for token `allowed_routes` matching.
+- **Route matching**: choose the most specific matching prefix when multiple patterns match.
 - **Rate limiting**: use Redis atomic operations (e.g., INCR with TTL) or Lua script for fixed window.
 - **Error mapping**: consistent HTTP responses (401 invalid token, 403 disallowed, 429 rate limit).
 - **Observability**: structured logs with request id; metrics endpoint for Prometheus scraping.

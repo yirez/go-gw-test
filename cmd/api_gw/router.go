@@ -13,7 +13,7 @@ import (
 
 // NewRouter builds the gorilla mux router for api_gw.
 func NewRouter() http.Handler {
-	rateLimiter := repo.NewRateLimiter(g.Cfg.StandardConfigs.Clients.Redis)
+	rateLimiter := repo.NewRateLimiterRepo(g.Cfg.StandardConfigs.Clients.Redis)
 	gatewayRepo := repo.NewGatewayRepo()
 	authRepo := repo.NewAuthRepo(
 		g.Cfg.StandardConfigs.AuthConfig.Endpoint,

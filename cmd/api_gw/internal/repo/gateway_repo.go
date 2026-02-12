@@ -11,7 +11,6 @@ import (
 	"go-gw-test/cmd/api_gw/internal/types"
 	"go-gw-test/cmd/api_gw/internal/utils"
 
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -55,10 +54,11 @@ func (g *GatewayRepoImpl) BuildRouteEntries(configs []types.EndpointConfig) ([]t
 func (g *GatewayRepoImpl) MatchRoute(routes []types.RouteEntry, r *http.Request) (types.RouteEntry, bool) {
 	var matched types.RouteEntry
 	bestScore := -1
+	path := normalizePath(r.URL.Path)
 
 	for _, entry := range routes {
-		if matchPathPattern(entry.Config.GwEndpoint, r.URL.Path) {
-			score := len(strings.Split(entry.Config.GwEndpoint, "/"))
+		if matchPathPattern(entry.Config.GwEndpoint, path) {
+			score := patternBaseLength(entry.Config.GwEndpoint)
 			if score > bestScore {
 				bestScore = score
 				matched = entry
@@ -75,8 +75,9 @@ func (g *GatewayRepoImpl) MatchRoute(routes []types.RouteEntry, r *http.Request)
 
 // IsAllowedRoute validates whether request path matches one of allowed route patterns.
 func (g *GatewayRepoImpl) IsAllowedRoute(allowed []string, r *http.Request) bool {
+	path := normalizePath(r.URL.Path)
 	for _, pattern := range allowed {
-		if matchPathPattern(pattern, r.URL.Path) {
+		if matchPathPattern(pattern, path) {
 			return true
 		}
 	}
@@ -103,7 +104,9 @@ func sanitizeRateKey(pattern string) string {
 }
 
 func matchPathPattern(pattern string, path string) bool {
-	if pattern == "" {
+	pattern = normalizePath(pattern)
+	path = normalizePath(path)
+	if pattern == "" || path == "" {
 		return false
 	}
 	if pattern == path {
@@ -120,8 +123,30 @@ func matchPathPattern(pattern string, path string) bool {
 		return strings.HasPrefix(path, prefix)
 	}
 
-	route := mux.NewRouter().NewRoute().Path(pattern)
-	return route.Match(&http.Request{URL: &url.URL{Path: path}}, &mux.RouteMatch{})
+	return false
+}
+
+// patternBaseLength returns matching-priority length; longer base wins.
+func patternBaseLength(pattern string) int {
+	pattern = normalizePath(pattern)
+	if strings.HasSuffix(pattern, "/*") {
+		return len(strings.TrimSuffix(pattern, "/*"))
+	}
+	return len(pattern)
+}
+
+// normalizePath standardizes route patterns and request paths for comparisons.
+func normalizePath(path string) string {
+	if path == "" {
+		return ""
+	}
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	if len(path) > 1 {
+		path = strings.TrimRight(path, "/")
+	}
+	return path
 }
 
 func newReverseProxy(target string, timeoutSec int) (*httputil.ReverseProxy, error) {

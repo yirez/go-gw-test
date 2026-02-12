@@ -20,28 +20,28 @@ const (
 
 // GatewayUseCase handles proxying logic for api_gw.
 type GatewayUseCase struct {
-	rateLimiter repo.RateLimiter
-	gatewayRepo repo.GatewayRepo
-	routes      []types.RouteEntry
+	rr     repo.RateLimiterRepo
+	gr     repo.GatewayRepo
+	routes []types.RouteEntry
 }
 
 // NewGatewayUseCase constructs a GatewayUseCase.
-func NewGatewayUseCase(rateLimiter repo.RateLimiter, gatewayRepo repo.GatewayRepo, configs []types.EndpointConfig) (*GatewayUseCase, error) {
+func NewGatewayUseCase(rateLimiter repo.RateLimiterRepo, gatewayRepo repo.GatewayRepo, configs []types.EndpointConfig) (*GatewayUseCase, error) {
 	routes, err := gatewayRepo.BuildRouteEntries(configs)
 	if err != nil {
 		return nil, err
 	}
 
 	return &GatewayUseCase{
-		rateLimiter: rateLimiter,
-		gatewayRepo: gatewayRepo,
-		routes:      routes,
+		rr:     rateLimiter,
+		gr:     gatewayRepo,
+		routes: routes,
 	}, nil
 }
 
 // Proxy handles the gateway proxy endpoint.
 func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
-	entry, ok := g.gatewayRepo.MatchRoute(g.routes, r)
+	entry, ok := g.gr.MatchRoute(g.routes, r)
 	if !ok {
 		utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "route not found"})
 		return
@@ -67,7 +67,7 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if limit > 0 {
-		count, _, err := g.rateLimiter.Increment(r.Context(), apiKey, entry.RateKey)
+		count, _, err := g.rr.Increment(r.Context(), apiKey, entry.RateKey)
 		if err != nil {
 			utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "rate limiter failed"})
 			return

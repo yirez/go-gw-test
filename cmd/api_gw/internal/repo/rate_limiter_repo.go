@@ -9,23 +9,23 @@ import (
 	"go.uber.org/zap"
 )
 
-// RateLimiter defines redis operations for rate limiting.
-type RateLimiter interface {
+// RateLimiterRepo defines redis operations for rate limiting.
+type RateLimiterRepo interface {
 	Increment(ctx context.Context, apiKey string, endpointKey string) (int64, time.Time, error)
 }
 
-// RateLimiterImpl implements RateLimiter using Redis.
-type RateLimiterImpl struct {
+// RateLimiterRepoImpl implements RateLimiterRepo using Redis.
+type RateLimiterRepoImpl struct {
 	client *redis.Client
 }
 
-// NewRateLimiter constructs a RateLimiter implementation.
-func NewRateLimiter(client *redis.Client) *RateLimiterImpl {
-	return &RateLimiterImpl{client: client}
+// NewRateLimiterRepo constructs a RateLimiterRepo implementation.
+func NewRateLimiterRepo(client *redis.Client) *RateLimiterRepoImpl {
+	return &RateLimiterRepoImpl{client: client}
 }
 
 // Increment increments the rate counter for the current second.
-func (r *RateLimiterImpl) Increment(ctx context.Context, apiKey string, endpointKey string) (int64, time.Time, error) {
+func (r *RateLimiterRepoImpl) Increment(ctx context.Context, apiKey string, endpointKey string) (int64, time.Time, error) {
 	now := time.Now().UTC()
 	window := now.Unix() // unix second, since our rate limit is per second, this works.
 	key := fmt.Sprintf("rl:%s:%s:%d", apiKey, endpointKey, window)
