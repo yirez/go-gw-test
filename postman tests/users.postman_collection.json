@@ -1,0 +1,94 @@
+{
+  "info": {
+    "_postman_id": "9d8a8676-08be-46e6-8d38-b76195d8b388",
+    "name": "users",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1225189"
+  },
+  "item": [
+    {
+      "name": "get users",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "localhost:8087/api/v1/users",
+          "host": [
+            "localhost"
+          ],
+          "port": "8087",
+          "path": [
+            "api",
+            "v1",
+            "users"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get user by id",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "localhost:8087/api/v1/users/1",
+          "host": [
+            "localhost"
+          ],
+          "port": "8087",
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "1"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get user contact",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "localhost:8087/api/v1/users/1/contact",
+          "host": [
+            "localhost"
+          ],
+          "port": "8087",
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "1",
+            "contact"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

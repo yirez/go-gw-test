@@ -1,0 +1,25 @@
+env: pre
+port: 8085
+
+auth:
+  endpoint: "http://auth_gw:8084"
+  service_id: "1"
+  secret: "123"
+
+endpoint_configuration:
+  - live_endpoint: "http://users_gw:8087"
+    live_timeout_sec: 60
+    gw_endpoint: "/api/v1/users/*"
+    rate_limit_req_per_sec: 5
+    allowed_role: ["user_all", "user_users"]
+  - live_endpoint: "http://orders_gw:8086"
+    live_timeout_sec: 60
+    gw_endpoint: "/api/v1/orders/*"
+    rate_limit_req_per_sec: 5
+    allowed_role: ["user_all", "user_orders"]
+
+redis:
+  host: "redis"
+  port: 6379
+  password: ""
+  db: 0

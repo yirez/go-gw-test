@@ -1,0 +1,76 @@
+{
+  "info": {
+    "_postman_id": "38dfc2be-f1c8-4f97-94fa-e0e04e131d30",
+    "name": "api-gw",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1225189"
+  },
+  "item": [
+    {
+      "name": "get contacts over api-gw",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearer}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8085/api/v1/users/1/contact",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8085",
+          "path": [
+            "api",
+            "v1",
+            "users",
+            "1",
+            "contact"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "get order items over api-gw",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearer}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8085/api/v1/orders/3/items",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8085",
+          "path": [
+            "api",
+            "v1",
+            "orders",
+            "3",
+            "items"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

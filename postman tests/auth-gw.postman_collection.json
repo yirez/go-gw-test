@@ -1,0 +1,76 @@
+{
+  "info": {
+    "_postman_id": "4d6b8430-599e-4833-9e49-7afc299712c2",
+    "name": "auth-gw",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "1225189"
+  },
+  "item": [
+    {
+      "name": "login",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"username\":\"user_all\",\r\n    \"password\":\"123\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "localhost:8084/auth/login",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "validate",
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearer}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"token\":\"{{bearer}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "localhost:8084/auth/validate",
+          "host": [
+            "localhost"
+          ],
+          "port": "8084",
+          "path": [
+            "auth",
+            "validate"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

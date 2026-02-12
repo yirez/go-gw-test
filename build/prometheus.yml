@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "api_gw"
+    static_configs:
+      - targets: ["api_gw:8085"]
+  - job_name: "auth_gw"
+    static_configs:
+      - targets: ["auth_gw:8084"]
+  - job_name: "users_gw"
+    static_configs:
+      - targets: ["users_gw:8087"]
+  - job_name: "orders_gw"
+    static_configs:
+      - targets: ["orders_gw:8086"]

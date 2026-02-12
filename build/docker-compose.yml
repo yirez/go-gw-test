@@ -1,0 +1,111 @@
+services:
+  redis:
+    image: redis:7.2
+    ports:
+      - "6389:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  auth_gw:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: auth_gw
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8084:8084"
+    volumes:
+      - ./configs/${CONFIG_ENV}/auth_gw.config.yml:/app/config.yml:ro
+
+  users_gw:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: users_gw
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8087:8087"
+    volumes:
+      - ./configs/${CONFIG_ENV}/users_gw.config.yml:/app/config.yml:ro
+
+  orders_gw:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: orders_gw
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./configs/${CONFIG_ENV}/orders_gw.config.yml:/app/config.yml:ro
+
+  api_gw:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile
+      args:
+        SERVICE: api_gw
+    depends_on:
+      auth_gw:
+        condition: service_started
+      users_gw:
+        condition: service_started
+      orders_gw:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    ports:
+      - "8085:8085"
+    volumes:
+      - ./configs/${CONFIG_ENV}/api_gw.config.yml:/app/config.yml:ro
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api_gw
+      - auth_gw
+      - users_gw
+      - orders_gw
+
+volumes:
+  redis_data:
+  postgres_data:
