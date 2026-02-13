@@ -38,6 +38,16 @@ func NewAuthUseCase(authRepo repo.AuthRepo, jwtKey []byte, tokenTTL time.Duratio
 }
 
 // Login authenticates a user and issues a token.
+// @Summary Login
+// @Description Authenticates user credentials and returns a signed JWT.
+// @Tags auth-gw
+// @Accept json
+// @Produce json
+// @Param request body types.LoginRequest true "Login payload"
+// @Success 200 {object} types.LoginResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /auth/login [post]
 func (u *AuthUseCaseImpl) Login(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req types.LoginRequest
@@ -64,6 +74,16 @@ func (u *AuthUseCaseImpl) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // ServiceToken authenticates a service and issues a token.
+// @Summary Service token
+// @Description Authenticates service credentials and returns a signed JWT.
+// @Tags auth-gw
+// @Accept json
+// @Produce json
+// @Param request body types.ServiceTokenRequest true "Service token payload"
+// @Success 200 {object} types.ServiceTokenResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /auth/service-token [post]
 func (u *AuthUseCaseImpl) ServiceToken(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req types.ServiceTokenRequest
@@ -109,6 +129,16 @@ func (u *AuthUseCaseImpl) ServiceToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // Validate validates a token and returns metadata for api_gw.
+// @Summary Validate token
+// @Description Validates a JWT and returns api_key/role/expiry metadata.
+// @Tags auth-gw
+// @Accept json
+// @Produce json
+// @Param request body types.ValidateRequest true "Validate payload"
+// @Success 200 {object} types.ValidateResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Router /auth/validate [post]
 func (u *AuthUseCaseImpl) Validate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req types.ValidateRequest

@@ -40,6 +40,22 @@ func NewGatewayUseCase(rateLimiter repo.RateLimiterRepo, gatewayRepo repo.Gatewa
 }
 
 // Proxy handles the gateway proxy endpoint.
+// @Summary Proxy request
+// @Description Proxies API requests to configured backend based on endpoint rules.
+// @Tags api-gw
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} map[string]any
+// @Failure 401 {object} map[string]string
+// @Failure 403 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 429 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/{path} [get]
+// @Router /api/v1/{path} [post]
+// @Router /api/v1/{path} [put]
+// @Router /api/v1/{path} [patch]
+// @Router /api/v1/{path} [delete]
 func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 	entry, ok := g.gr.MatchRoute(g.routes, r)
 	if !ok {
@@ -73,6 +89,14 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if int(count) > limit {
+			zap.L().Warn("rate limit exceeded",
+				zap.String("api_key", apiKey),
+				zap.String("endpoint", entry.Config.GwEndpoint),
+				zap.Int("limit", limit),
+				zap.Int64("count", count),
+				zap.String("path", r.URL.Path),
+				zap.String("method", r.Method),
+			)
 			utils.WriteJSON(w, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
 			return
 		}

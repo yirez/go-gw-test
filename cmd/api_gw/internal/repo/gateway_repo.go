@@ -156,6 +156,13 @@ func newReverseProxy(target string, timeoutSec int) (*httputil.ReverseProxy, err
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(urlTarget)
+	director := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		director(req)
+		if req.Header.Get("X-Request-Id") == "" {
+			req.Header.Set("X-Request-Id", utils.NewRequestID())
+		}
+	}
 	proxy.Transport = &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           (&net.Dialer{Timeout: 5 * time.Second}).DialContext,

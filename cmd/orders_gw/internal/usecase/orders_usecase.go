@@ -27,6 +27,12 @@ func NewOrdersUseCase(ordersRepo repo.OrdersRepo) *OrdersUseCaseImpl {
 }
 
 // ListOrders returns all orders.
+// @Summary List orders
+// @Tags orders-gw
+// @Produce json
+// @Success 200 {object} types.OrdersResponse
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders [get]
 func (u *OrdersUseCaseImpl) ListOrders(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	orders, err := u.repo.ListOrders(ctx)
@@ -40,6 +46,15 @@ func (u *OrdersUseCaseImpl) ListOrders(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetOrder returns an order by ID.
+// @Summary Get order
+// @Tags orders-gw
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} types.OrderResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id} [get]
 func (u *OrdersUseCaseImpl) GetOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idValue := mux.Vars(r)["id"]
@@ -70,6 +85,15 @@ func (u *OrdersUseCaseImpl) GetOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetOrderItems returns items for an order.
+// @Summary Get order items
+// @Tags orders-gw
+// @Produce json
+// @Param id path int true "Order ID"
+// @Success 200 {object} types.OrderItemsResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/orders/{id}/items [get]
 func (u *OrdersUseCaseImpl) GetOrderItems(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idValue := mux.Vars(r)["id"]

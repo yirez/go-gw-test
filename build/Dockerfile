@@ -5,11 +5,14 @@ FROM golang:${GO_VERSION} AS builder
 
 ARG SERVICE
 WORKDIR /src
+ENV PATH="${PATH}:/go/bin"
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6
+RUN go generate ./cmd/${SERVICE}
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o /out/service ./cmd/${SERVICE}
 
 FROM gcr.io/distroless/static-debian12

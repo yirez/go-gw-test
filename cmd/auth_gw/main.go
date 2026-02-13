@@ -8,6 +8,12 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate swag init -g main.go -o docs --parseDependency --parseInternal
+// @title Auth Gateway API
+// @version 1.0
+// @description Authentication gateway for user login, service-token issuance, and token validation.
+// @BasePath /
+
 // main initializes configuration, logger, and starts the auth_gw HTTP server.
 func main() {
 	g.InitConfiguration()

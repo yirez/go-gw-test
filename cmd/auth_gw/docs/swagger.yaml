@@ -1,0 +1,193 @@
+basePath: /
+definitions:
+  types.LoginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  types.LoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  types.ServiceTokenRequest:
+    properties:
+      secret:
+        type: string
+      service_id:
+        type: string
+    type: object
+  types.ServiceTokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  types.ValidateRequest:
+    properties:
+      token:
+        type: string
+    type: object
+  types.ValidateResponse:
+    properties:
+      api_key:
+        description: UUID from JWT jti.
+        type: string
+      expires_at:
+        type: string
+      role:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Authentication gateway for user login, service-token issuance, and
+    token validation.
+  title: Auth Gateway API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user credentials and returns a signed JWT.
+      parameters:
+      - description: Login payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Login
+      tags:
+      - auth-gw
+  /auth/service-token:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates service credentials and returns a signed JWT.
+      parameters:
+      - description: Service token payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.ServiceTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ServiceTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Service token
+      tags:
+      - auth-gw
+  /auth/validate:
+    post:
+      consumes:
+      - application/json
+      description: Validates a JWT and returns api_key/role/expiry metadata.
+      parameters:
+      - description: Validate payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/types.ValidateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ValidateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Validate token
+      tags:
+      - auth-gw
+  /healthz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - auth-gw
+  /metrics:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Metrics status
+      tags:
+      - auth-gw
+  /readyz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check
+      tags:
+      - auth-gw
+swagger: "2.0"

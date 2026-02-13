@@ -1,0 +1,179 @@
+basePath: /
+definitions:
+  types.OrderItemResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      order_id:
+        type: integer
+      quantity:
+        type: integer
+      sku:
+        type: string
+      unit_price:
+        type: number
+    type: object
+  types.OrderItemsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/types.OrderItemResponse'
+        type: array
+    type: object
+  types.OrderResponse:
+    properties:
+      id:
+        type: integer
+      status:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  types.OrdersResponse:
+    properties:
+      orders:
+        items:
+          $ref: '#/definitions/types.OrderResponse'
+        type: array
+    type: object
+info:
+  contact: {}
+  description: Read-only orders gateway for order and item retrieval.
+  title: Orders Gateway API
+  version: "1.0"
+paths:
+  /api/v1/orders:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.OrdersResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List orders
+      tags:
+      - orders-gw
+  /api/v1/orders/{id}:
+    get:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.OrderResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get order
+      tags:
+      - orders-gw
+  /api/v1/orders/{id}/items:
+    get:
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.OrderItemsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get order items
+      tags:
+      - orders-gw
+  /healthz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - orders-gw
+  /metrics:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Metrics status
+      tags:
+      - orders-gw
+  /readyz:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Readiness check
+      tags:
+      - orders-gw
+swagger: "2.0"

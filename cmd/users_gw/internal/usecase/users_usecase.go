@@ -27,6 +27,12 @@ func NewUsersUseCase(usersRepo repo.UsersRepo) *UsersUseCaseImpl {
 }
 
 // ListUsers returns all users.
+// @Summary List users
+// @Tags users-gw
+// @Produce json
+// @Success 200 {object} types.UsersResponse
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/users [get]
 func (u *UsersUseCaseImpl) ListUsers(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	users, err := u.repo.ListUsers(ctx)
@@ -40,6 +46,15 @@ func (u *UsersUseCaseImpl) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetUser returns a user profile by ID.
+// @Summary Get user
+// @Tags users-gw
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} types.UserProfileResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/users/{id} [get]
 func (u *UsersUseCaseImpl) GetUser(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idValue := mux.Vars(r)["id"]
@@ -71,6 +86,15 @@ func (u *UsersUseCaseImpl) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetContactInfo returns the stored contact info for a user.
+// @Summary Get user contact info
+// @Tags users-gw
+// @Produce json
+// @Param id path int true "User ID"
+// @Success 200 {object} types.ContactInfoResponse
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /api/v1/users/{id}/contact [get]
 func (u *UsersUseCaseImpl) GetContactInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	idValue := mux.Vars(r)["id"]
