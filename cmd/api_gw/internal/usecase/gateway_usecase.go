@@ -7,7 +7,6 @@ import (
 	"go-gw-test/cmd/api_gw/internal/types"
 	"go-gw-test/cmd/api_gw/internal/utils"
 
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -108,19 +107,4 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 // NotFound returns a JSON 404 response for unmatched routes.
 func (g *GatewayUseCase) NotFound(w http.ResponseWriter, r *http.Request) {
 	utils.WriteJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
-}
-
-// RequestIDMiddleware ensures a request id exists for the request lifecycle.
-func (g *GatewayUseCase) RequestIDMiddleware() mux.MiddlewareFunc {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestID := r.Header.Get("X-Request-Id")
-			if requestID == "" {
-				requestID = utils.NewRequestID()
-				r.Header.Set("X-Request-Id", requestID)
-			}
-			w.Header().Set("X-Request-Id", requestID)
-			next.ServeHTTP(w, r)
-		})
-	}
 }

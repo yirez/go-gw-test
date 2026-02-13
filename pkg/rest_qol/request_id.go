@@ -3,16 +3,18 @@ package rest_qol
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 )
 
 const headerXRequestID = "X-Request-Id"
 
 // EnsureRequestID sets request/response request-id headers and returns the effective ID.
-func EnsureRequestID(w http.ResponseWriter, r *http.Request) string {
+// Prefix is only applied when the incoming request does not already provide X-Request-Id.
+func EnsureRequestID(w http.ResponseWriter, r *http.Request, fallbackPrefix string) string {
 	requestID := r.Header.Get(headerXRequestID)
 	if requestID == "" {
-		requestID = newRequestID()
+		requestID = newRequestID(fallbackPrefix)
 		r.Header.Set(headerXRequestID, requestID)
 	}
 
@@ -20,8 +22,12 @@ func EnsureRequestID(w http.ResponseWriter, r *http.Request) string {
 	return requestID
 }
 
-func newRequestID() string {
+func newRequestID(prefix string) string {
 	buf := make([]byte, 12)
 	_, _ = rand.Read(buf)
-	return hex.EncodeToString(buf)
+	if prefix == "" {
+		return hex.EncodeToString(buf)
+	}
+
+	return fmt.Sprintf("%s%s", prefix, hex.EncodeToString(buf))
 }

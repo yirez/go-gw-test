@@ -9,7 +9,6 @@ import (
 
 	_ "go-gw-test/cmd/orders_gw/docs"
 	"go-gw-test/cmd/orders_gw/internal/usecase"
-	"go-gw-test/cmd/orders_gw/internal/utils"
 
 	"github.com/gorilla/mux"
 	httpSwagger "github.com/swaggo/http-swagger"
@@ -31,53 +30,15 @@ func NewRouter() http.Handler {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/healthz", Health).Methods(http.MethodGet)
-	router.HandleFunc("/readyz", Ready).Methods(http.MethodGet)
-	router.HandleFunc("/metrics", Metrics).Methods(http.MethodGet)
-	router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler)
 
 	router.HandleFunc("/api/v1/orders", ordersUseCase.ListOrders).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/orders/{id}", ordersUseCase.GetOrder).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/orders/{id}/items", ordersUseCase.GetOrderItems).Methods(http.MethodGet)
 
 	router.NotFoundHandler = http.HandlerFunc(ordersUseCase.NotFound)
-	router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rest_qol.EnsureRequestID(w, r)
-			next.ServeHTTP(w, r)
-		})
-	})
+	router.Use(rest_qol.RequestIDMiddleware("direct-orders-gw-"))
 	router.Use(loggingUseCase.LoggingMiddleware())
 
 	return router
-}
-
-// Health returns a basic liveness response.
-// @Summary Health check
-// @Tags orders-gw
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Router /healthz [get]
-func Health(w http.ResponseWriter, r *http.Request) {
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
-}
-
-// Ready returns a basic readiness response.
-// @Summary Readiness check
-// @Tags orders-gw
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Router /readyz [get]
-func Ready(w http.ResponseWriter, r *http.Request) {
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "ready"})
-}
-
-// Metrics exposes a placeholder metrics endpoint.
-// @Summary Metrics status
-// @Tags orders-gw
-// @Produce json
-// @Success 200 {object} map[string]string
-// @Router /metrics [get]
-func Metrics(w http.ResponseWriter, r *http.Request) {
-	utils.WriteJSON(w, http.StatusOK, map[string]string{"status": "metrics_not_implemented"})
 }

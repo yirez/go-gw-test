@@ -160,7 +160,7 @@ func newReverseProxy(target string, timeoutSec int) (*httputil.ReverseProxy, err
 	proxy.Director = func(req *http.Request) {
 		director(req)
 		if req.Header.Get("X-Request-Id") == "" {
-			req.Header.Set("X-Request-Id", utils.NewRequestID())
+			req.Header.Set("X-Request-Id", "api-gw-"+utils.NewRequestID())
 		}
 	}
 	proxy.Transport = &http.Transport{
