@@ -31,7 +31,7 @@ func NewRouter() http.Handler {
 	router.NotFoundHandler = http.HandlerFunc(authUseCase.NotFound)
 
 	router.Use(rest_qol.RequestIDMiddleware("direct-auth-gw-"))
-	router.Use(rest_qol.NewHTTPMetrics("auth_gw").Middleware())
+	router.Use(metrics.Middleware())
 	router.Use(rest_qol.AccessLoggingMiddleware())
 	router.Use(authUseCase.AuthMiddleware())
 
