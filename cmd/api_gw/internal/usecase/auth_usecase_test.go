@@ -96,9 +96,12 @@ func TestTokenValidationMiddlewareInitializesMissingRedisMetadata(t *testing.T) 
 	nextCalled := false
 	handler := useCase.TokenValidationMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
-		apiKey, ok := r.Context().Value(ctxKeyAPIKey).(string)
-		if !ok || apiKey == "" {
-			t.Fatalf("api key missing in context")
+		metadata, ok := r.Context().Value(ctxKeyTokenMetadata).(types.TokenMetadata)
+		if !ok {
+			t.Fatalf("token metadata missing in context")
+		}
+		if metadata.APIKey == "" {
+			t.Fatalf("api key missing in token metadata")
 		}
 		w.WriteHeader(http.StatusNoContent)
 	}))

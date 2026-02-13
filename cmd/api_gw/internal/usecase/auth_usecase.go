@@ -133,8 +133,7 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), ctxKeyAPIKey, apiKey)
-			ctx = context.WithValue(ctx, ctxKeyTokenMetadata, metadata)
+			ctx := context.WithValue(r.Context(), ctxKeyTokenMetadata, metadata)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

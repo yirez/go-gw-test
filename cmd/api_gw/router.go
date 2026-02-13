@@ -32,7 +32,6 @@ func NewRouter() http.Handler {
 	if err != nil {
 		zap.L().Fatal("init gateway usecase", zap.Error(err))
 	}
-	loggingUseCase := usecase.NewLoggingUseCaseImpl()
 
 	router := mux.NewRouter()
 
@@ -42,7 +41,7 @@ func NewRouter() http.Handler {
 
 	router.NotFoundHandler = http.HandlerFunc(gatewayUseCase.NotFound)
 	router.Use(rest_qol.RequestIDMiddleware("api-gw-"))
-	router.Use(loggingUseCase.LoggingMiddleware())
+	router.Use(rest_qol.AccessLoggingMiddleware())
 	router.Use(authUseCase.TokenValidationMiddleware())
 
 	return router

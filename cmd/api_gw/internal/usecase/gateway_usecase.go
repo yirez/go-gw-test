@@ -13,7 +13,6 @@ import (
 type contextKey string
 
 const (
-	ctxKeyAPIKey        contextKey = "api_key"
 	ctxKeyTokenMetadata contextKey = "token_metadata"
 )
 
@@ -62,16 +61,22 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiKey, ok := r.Context().Value(ctxKeyAPIKey).(string)
-	if !ok || apiKey == "" {
-		zap.L().Error("proxy context missing api_key")
+	metadata, ok := r.Context().Value(ctxKeyTokenMetadata).(types.TokenMetadata)
+	if !ok {
+		zap.L().Error("proxy context missing token metadata",
+			zap.String("request_id", r.Header.Get("X-Request-Id")),
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method),
+		)
 		utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
-
-	metadata, ok := r.Context().Value(ctxKeyTokenMetadata).(types.TokenMetadata)
-	if !ok {
-		zap.L().Error("proxy context missing token metadata", zap.String("api_key", apiKey))
+	if metadata.APIKey == "" {
+		zap.L().Error("proxy token metadata missing api_key",
+			zap.String("request_id", r.Header.Get("X-Request-Id")),
+			zap.String("path", r.URL.Path),
+			zap.String("method", r.Method),
+		)
 		utils.WriteJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 		return
 	}
@@ -82,17 +87,18 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if limit > 0 {
-		count, _, err := g.rr.Increment(r.Context(), apiKey, entry.RateKey)
+		count, _, err := g.rr.Increment(r.Context(), metadata.APIKey, entry.RateKey)
 		if err != nil {
 			utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "rate limiter failed"})
 			return
 		}
 		if int(count) > limit {
 			zap.L().Warn("rate limit exceeded",
-				zap.String("api_key", apiKey),
+				zap.String("api_key", metadata.APIKey),
 				zap.String("endpoint", entry.Config.GwEndpoint),
 				zap.Int("limit", limit),
 				zap.Int64("count", count),
+				zap.String("request_id", r.Header.Get("X-Request-Id")),
 				zap.String("path", r.URL.Path),
 				zap.String("method", r.Method),
 			)

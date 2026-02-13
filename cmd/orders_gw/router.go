@@ -26,7 +26,6 @@ func NewRouter() http.Handler {
 	}
 
 	ordersUseCase := usecase.NewOrdersUseCase(ordersRepo)
-	loggingUseCase := usecase.NewLoggingUseCaseImpl()
 
 	router := mux.NewRouter()
 
@@ -38,7 +37,7 @@ func NewRouter() http.Handler {
 
 	router.NotFoundHandler = http.HandlerFunc(ordersUseCase.NotFound)
 	router.Use(rest_qol.RequestIDMiddleware("direct-orders-gw-"))
-	router.Use(loggingUseCase.LoggingMiddleware())
+	router.Use(rest_qol.AccessLoggingMiddleware())
 
 	return router
 }
