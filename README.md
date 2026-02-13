@@ -53,6 +53,7 @@ docker compose --env-file .env.pre up --build
 - `postgres`: `5435`
 - `redis`: `6389`
 - `prometheus`: `9090`
+- each service exposes Prometheus metrics at `/metrics`
 
 ## Postman test cases
 Json formatted postman requests are under `postman_tests` dir
@@ -62,6 +63,11 @@ Run all tests:
 ```powershell
 go test ./...
 ```
+
+## Metrics
+Each gateway exports basic Prometheus HTTP metrics at `/metrics`:
+- `http_requests_total{service,method,route,status}`
+- `http_request_duration_seconds{service,method,route,status}`
 
 Current unit tests cover critical paths across gateways:
 - auth middleware behavior

@@ -28,8 +28,9 @@ func NewRouter() http.Handler {
 	ordersUseCase := usecase.NewOrdersUseCase(ordersRepo)
 
 	router := mux.NewRouter()
+	metrics := rest_qol.NewHTTPMetrics("orders_gw")
 
-	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler)
+	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler, metrics.Handler())
 
 	router.HandleFunc("/api/v1/orders", ordersUseCase.ListOrders).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/orders/{id}", ordersUseCase.GetOrder).Methods(http.MethodGet)
@@ -37,6 +38,7 @@ func NewRouter() http.Handler {
 
 	router.NotFoundHandler = http.HandlerFunc(ordersUseCase.NotFound)
 	router.Use(rest_qol.RequestIDMiddleware("direct-orders-gw-"))
+	router.Use(metrics.Middleware())
 	router.Use(rest_qol.AccessLoggingMiddleware())
 
 	return router

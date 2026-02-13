@@ -20,8 +20,9 @@ func NewRouter() http.Handler {
 	authUseCase := usecase.NewAuthUseCase(authRepo, g.Cfg.JwtSigningKey, time.Hour)
 
 	router := mux.NewRouter()
+	metrics := rest_qol.NewHTTPMetrics("auth_gw")
 
-	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler)
+	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler, metrics.Handler())
 
 	router.HandleFunc("/auth/login", authUseCase.Login).Methods(http.MethodPost)
 	router.HandleFunc("/auth/service-token", authUseCase.ServiceToken).Methods(http.MethodPost)
@@ -30,6 +31,7 @@ func NewRouter() http.Handler {
 	router.NotFoundHandler = http.HandlerFunc(authUseCase.NotFound)
 
 	router.Use(rest_qol.RequestIDMiddleware("direct-auth-gw-"))
+	router.Use(rest_qol.NewHTTPMetrics("auth_gw").Middleware())
 	router.Use(rest_qol.AccessLoggingMiddleware())
 	router.Use(authUseCase.AuthMiddleware())
 

@@ -34,13 +34,15 @@ func NewRouter() http.Handler {
 	}
 
 	router := mux.NewRouter()
+	metrics := rest_qol.NewHTTPMetrics("api_gw")
 
-	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler)
+	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler, metrics.Handler())
 
 	router.PathPrefix("/api/v1/").HandlerFunc(gatewayUseCase.Proxy)
 
 	router.NotFoundHandler = http.HandlerFunc(gatewayUseCase.NotFound)
 	router.Use(rest_qol.RequestIDMiddleware("api-gw-"))
+	router.Use(metrics.Middleware())
 	router.Use(rest_qol.AccessLoggingMiddleware())
 	router.Use(authUseCase.TokenValidationMiddleware())
 

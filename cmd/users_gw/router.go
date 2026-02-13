@@ -28,8 +28,9 @@ func NewRouter() http.Handler {
 	usersUseCase := usecase.NewUsersUseCase(usersRepo)
 
 	router := mux.NewRouter()
+	metrics := rest_qol.NewHTTPMetrics("users_gw")
 
-	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler)
+	rest_qol.RegisterOperationalRoutes(router, httpSwagger.WrapHandler, metrics.Handler())
 
 	router.HandleFunc("/api/v1/users", usersUseCase.ListUsers).Methods(http.MethodGet)
 	router.HandleFunc("/api/v1/users/{id}", usersUseCase.GetUser).Methods(http.MethodGet)
@@ -37,6 +38,7 @@ func NewRouter() http.Handler {
 
 	router.NotFoundHandler = http.HandlerFunc(usersUseCase.NotFound)
 	router.Use(rest_qol.RequestIDMiddleware("direct-users-gw-"))
+	router.Use(metrics.Middleware())
 	router.Use(rest_qol.AccessLoggingMiddleware())
 
 	return router
