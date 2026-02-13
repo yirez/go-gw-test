@@ -9,14 +9,12 @@ flowchart LR
   api_gw -->|proxy| users_gw[users_gw]
   api_gw -->|proxy| orders_gw[orders_gw]
 
-  api_gw -->|token data + rate limit| redis[(Redis)]
-  users_gw -->|service data| redis
-  orders_gw -->|service data| redis
-  auth_gw -->|issue tokens| redis
+  api_gw -->|token metadata + rate limit counters| redis[(Redis)]
+  api_gw -->|service auth + token validate| auth_gw
+  auth_gw -->|users/services credentials| postgres[(Postgres)]
 
-  users_gw -->|data| postgres[(Postgres)]
+  users_gw -->|data| postgres
   orders_gw -->|data| postgres
-  auth_gw -->|auth data optional| postgres
 ```
 
 ## Configuration and Observability
@@ -49,10 +47,14 @@ sequenceDiagram
   A-->>C: JWT token
   C->>G: Request /api/v1/users/{id}\nAuthorization: Bearer <token>
   G->>A: Validate token (JWT)
-  A->>R: Load token data
-  R-->>A: token data (allowed_routes, expires_at, rate_limit)
-  A-->>G: token data
-  G->>G: Check rate limit + allowed_routes (mux matcher)
+  A-->>G: api_key + role + expires_at
+  G->>R: Read token:{api_key}
+  alt metadata missing
+    G->>G: Build allowed_routes/rate_limit from role + endpoint config
+    G->>R: Write token:{api_key} with token-aligned expiry
+  end
+  G->>R: Increment rl:{api_key}:{endpoint}:{unix_second}
+  G->>G: Check route permission and per-second limit
   G->>U: Proxy request
   U-->>G: Response
   G-->>C: Response
@@ -63,15 +65,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
   autonumber
-  participant S as Service (users_gw)
+  participant G as api_gw
   participant A as auth_gw
-  participant R as Redis
 
-  S->>A: Request service token (self identity)
+  G->>A: Request service token (service_id + secret)
   A->>A: Sign JWT (system clock key) - TTL 1 hour
-  A->>R: Store token data
-  R-->>A: OK
-  A-->>S: JWT token
+  A-->>G: Service JWT token
 ```
 
 ## Auth Token Issuance (Client Example)
@@ -81,11 +80,8 @@ sequenceDiagram
   autonumber
   participant C as Client
   participant A as auth_gw
-  participant R as Redis
 
   C->>A: Login (credentials)
   A->>A: Sign JWT (system clock key) - TTL 1 hour
-  A->>R: Store token data
-  R-->>A: OK
   A-->>C: JWT token
 ```

@@ -62,6 +62,46 @@
       "response": []
     },
     {
+      "name": "metrics",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearer}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"token\":\"{{bearer}}\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "localhost:8086/metrics",
+          "host": [
+            "localhost"
+          ],
+          "port": "8086",
+          "path": [
+            "metrics"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "get orders items",
       "protocolProfileBehavior": {
         "disableBodyPruning": true
