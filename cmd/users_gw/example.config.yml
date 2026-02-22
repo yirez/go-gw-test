@@ -3,7 +3,7 @@ port: 8087
 
 db:
   host: "localhost"
-  port: 5432
+  port: 5435
   name: "user"
   user: "app"
   password: "app"

@@ -20,6 +20,6 @@ endpoint_configuration:
 
 redis:
   host: "localhost"
-  port: 6379
+  port: 6389
   password: ""
   db: 0
