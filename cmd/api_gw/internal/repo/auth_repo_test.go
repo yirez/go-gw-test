@@ -25,6 +25,7 @@ func TestAuthRepoSetAndGetTokenMeta(t *testing.T) {
 	expiresAt := time.Now().UTC().Add(1 * time.Hour).Truncate(time.Second)
 	in := types.TokenMetadata{
 		APIKey:        "550e8400-e29b-41d4-a716-446655440000",
+		Owner:         "user_users",
 		RateLimit:     7,
 		ExpiresAt:     expiresAt,
 		AllowedRoutes: []string{"/api/v1/users/*"},
@@ -41,6 +42,9 @@ func TestAuthRepoSetAndGetTokenMeta(t *testing.T) {
 
 	if out.APIKey != in.APIKey {
 		t.Fatalf("api key mismatch: got %s want %s", out.APIKey, in.APIKey)
+	}
+	if out.Owner != in.Owner {
+		t.Fatalf("owner mismatch: got %s want %s", out.Owner, in.Owner)
 	}
 	if out.RateLimit != in.RateLimit {
 		t.Fatalf("rate limit mismatch: got %d want %d", out.RateLimit, in.RateLimit)

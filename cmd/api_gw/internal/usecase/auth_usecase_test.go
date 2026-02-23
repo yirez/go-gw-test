@@ -103,6 +103,9 @@ func TestTokenValidationMiddlewareInitializesMissingRedisMetadata(t *testing.T) 
 		if metadata.APIKey == "" {
 			t.Fatalf("api key missing in token metadata")
 		}
+		if metadata.Owner != "user_users" {
+			t.Fatalf("owner mismatch in token metadata: got %s want %s", metadata.Owner, "user_users")
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	handler.ServeHTTP(rr, req)
@@ -129,6 +132,7 @@ func TestTokenValidationMiddlewareForbiddenRole(t *testing.T) {
 		},
 		metaResp: types.TokenMetadata{
 			APIKey:        "550e8400-e29b-41d4-a716-446655440000",
+			Owner:         "user_orders",
 			RateLimit:     5,
 			ExpiresAt:     expiresAt,
 			AllowedRoutes: []string{"/api/v1/users/*"},
@@ -193,5 +197,58 @@ func TestTokenValidationMiddlewarePropagatesRepoErrors(t *testing.T) {
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Fatalf("expected status 500, got %d", rr.Code)
+	}
+}
+
+// TestTokenValidationMiddlewareBackfillsOwner verifies existing token metadata owner is updated from validated role.
+func TestTokenValidationMiddlewareBackfillsOwner(t *testing.T) {
+	expiresAt := time.Now().UTC().Add(30 * time.Minute).Truncate(time.Second)
+	authRepo := &fakeAuthRepo{
+		validateResp: types.ValidateResponse{
+			APIKey:    "550e8400-e29b-41d4-a716-446655440000",
+			Role:      "user_users",
+			ExpiresAt: expiresAt.Format(time.RFC3339),
+		},
+		metaResp: types.TokenMetadata{
+			APIKey:        "550e8400-e29b-41d4-a716-446655440000",
+			Owner:         "",
+			RateLimit:     5,
+			ExpiresAt:     expiresAt,
+			AllowedRoutes: []string{"/api/v1/users/*"},
+		},
+	}
+
+	gatewayRepo := repo.NewGatewayRepo()
+	useCase, err := NewAuthUseCase(authRepo, gatewayRepo, []types.EndpointConfig{
+		{GwEndpoint: "/api/v1/users/*", LiveEndpoint: "http://users:8087", AllowedRole: []string{"user_users"}},
+	})
+	if err != nil {
+		t.Fatalf("new auth usecase: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/1", nil)
+	req.Header.Set("Authorization", "Bearer valid-token")
+	rr := httptest.NewRecorder()
+
+	handler := useCase.TokenValidationMiddleware()(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metadata, ok := r.Context().Value(ctxKeyTokenMetadata).(types.TokenMetadata)
+		if !ok {
+			t.Fatalf("token metadata missing in context")
+		}
+		if metadata.Owner != "user_users" {
+			t.Fatalf("owner mismatch in context metadata: got %s want %s", metadata.Owner, "user_users")
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("expected status 204, got %d", rr.Code)
+	}
+	if !authRepo.setCalled {
+		t.Fatalf("expected SetToken to be called to backfill owner")
+	}
+	if authRepo.metaResp.Owner != "user_users" {
+		t.Fatalf("owner mismatch after backfill: got %s want %s", authRepo.metaResp.Owner, "user_users")
 	}
 }

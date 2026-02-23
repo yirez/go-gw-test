@@ -55,7 +55,13 @@ docker compose --env-file .env.pre up --build
 - `postgres`: `5435`
 - `redis`: `6389`
 - `prometheus`: `9090`
+- `grafana`: `3000`
 - each service exposes Prometheus metrics at `/metrics`
+
+Grafana:
+- URL: `http://localhost:3000`
+- Default login: `admin` / `admin`
+- Preloaded dashboard: `Gateway Metrics Overview`
 
 ## Datastores
 - Postgres databases:
@@ -126,6 +132,31 @@ $env:AUTH_USERNAME="user_all"
 $env:AUTH_PASSWORD="123"
 $env:BURST_REQUESTS="8"
 k6 run tests/k6/rate_limit_per_service_per_token.js
+```
+
+## k6 Sustained Load Test
+The script `tests/k6/sustained_api_gw_users_orders.js` drives sustained load through `api_gw` for 10 minutes:
+- users endpoint: `3 req/s` to `/api/v1/users`
+- orders endpoint: `2 req/s` to `/api/v1/orders`
+
+Run:
+```powershell
+k6 run tests/k6/sustained_api_gw_users_orders.js
+```
+
+Optional overrides:
+```powershell
+$env:API_GW_BASE_URL="http://localhost:8085"
+$env:AUTH_GW_BASE_URL="http://localhost:8084"
+$env:AUTH_USERNAME="user_all"
+$env:AUTH_PASSWORD="123"
+k6 run tests/k6/sustained_api_gw_users_orders.js
+```
+
+Manual cancel:
+```powershell
+# while k6 is running
+Ctrl+C
 ```
 
 ## Swagger

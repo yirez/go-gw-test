@@ -25,6 +25,7 @@ type EndpointConfig struct {
 // TokenMetadata represents token data stored in Redis.
 type TokenMetadata struct {
 	APIKey        string
+	Owner         string
 	RateLimit     int
 	ExpiresAt     time.Time
 	AllowedRoutes []string
@@ -33,6 +34,7 @@ type TokenMetadata struct {
 // RedisTokenRecord represents token metadata as stored in Redis hash fields.
 type RedisTokenRecord struct {
 	APIKey        string `redis:"api_key"`
+	Owner         string `redis:"owner"`
 	RateLimit     int    `redis:"rate_limit"`
 	ExpiresAt     string `redis:"expires_at"`
 	AllowedRoutes string `redis:"allowed_routes"`

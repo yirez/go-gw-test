@@ -26,6 +26,7 @@ Endpoints:
 - `postgres`: `localhost:5435`
 - `redis`: `localhost:6389`
 - `prometheus`: `http://localhost:9090`
+- `grafana`: `http://localhost:3000` (`admin` / `admin`)
 
 Credential seeding and source of truth:
 - On fresh Postgres volume init, `build/init.sql` seeds auth credentials into `auth.user_records` and `auth.service_records`.
@@ -38,6 +39,7 @@ Metrics endpoints:
 - `auth_gw`: `http://localhost:8084/metrics`
 - `orders_gw`: `http://localhost:8086/metrics`
 - `users_gw`: `http://localhost:8087/metrics`
+- Grafana dashboard: `Gateway Metrics Overview` (preprovisioned)
 
 Swagger UI endpoints:
 - `api_gw`: `http://localhost:8085/swagger/index.html`

@@ -95,6 +95,7 @@ func (g *GatewayUseCase) Proxy(w http.ResponseWriter, r *http.Request) {
 		if int(count) > limit {
 			zap.L().Warn("rate limit exceeded",
 				zap.String("api_key", metadata.APIKey),
+				zap.String("owner", metadata.Owner),
 				zap.String("endpoint", entry.Config.GwEndpoint),
 				zap.Int("limit", limit),
 				zap.Int64("count", count),

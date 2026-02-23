@@ -105,6 +105,18 @@ func (u *AuthUseCaseImpl) TokenValidationMiddleware() mux.MiddlewareFunc {
 				}
 			}
 
+			// Keep metadata owner aligned with auth role for easier token ownership debugging in Redis.
+			if validateResp.Role != "" && metadata.Owner != validateResp.Role {
+				metadata.Owner = validateResp.Role
+				if err = u.ar.SetToken(r.Context(), metadata); err != nil {
+					zap.L().Warn("failed to update token owner metadata",
+						zap.String("api_key", apiKey),
+						zap.String("owner", validateResp.Role),
+						zap.Error(err),
+					)
+				}
+			}
+
 			err = u.ar.TouchExpiry(r.Context(), apiKey, expiresAt)
 			if err != nil {
 				utils.WriteJSON(w, http.StatusInternalServerError, map[string]string{"error": "token expiry sync failed"})
@@ -166,6 +178,7 @@ func (u *AuthUseCaseImpl) buildDefaultTokenMetadata(apiKey string, role string, 
 
 	return types.TokenMetadata{
 		APIKey:        apiKey,
+		Owner:         role,
 		RateLimit:     maxRateLimit,
 		ExpiresAt:     expiresAt.UTC(),
 		AllowedRoutes: allowedRoutes,

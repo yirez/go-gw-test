@@ -207,6 +207,7 @@ func (r *AuthRepoImpl) GetTokenMetaFromRedis(ctx context.Context, apiKey string)
 
 	return types.TokenMetadata{
 		APIKey:        apiKeyValue,
+		Owner:         strings.TrimSpace(values["owner"]),
 		RateLimit:     rateLimit,
 		ExpiresAt:     expiresAt,
 		AllowedRoutes: allowedRoutes,
@@ -236,6 +237,7 @@ func (r *AuthRepoImpl) SetToken(ctx context.Context, metadata types.TokenMetadat
 
 	record := types.RedisTokenRecord{
 		APIKey:        metadata.APIKey,
+		Owner:         metadata.Owner,
 		RateLimit:     metadata.RateLimit,
 		ExpiresAt:     metadata.ExpiresAt.UTC().Format(time.RFC3339),
 		AllowedRoutes: string(allowedRoutesJSON),
