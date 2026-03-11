@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go-gw-test/cmd/orders_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/orders_gw/internal/types"
 
 	"github.com/gorilla/mux"
 	"gorm.io/gorm"

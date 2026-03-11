@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"go-gw-test/cmd/auth_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/types"
 
 	"golang.org/x/crypto/bcrypt"
 )

@@ -3,7 +3,7 @@ package repo
 import (
 	"context"
 
-	"go-gw-test/cmd/users_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/users_gw/internal/types"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

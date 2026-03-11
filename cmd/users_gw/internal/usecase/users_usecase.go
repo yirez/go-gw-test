@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"go-gw-test/cmd/users_gw/internal/repo"
-	"go-gw-test/cmd/users_gw/internal/types"
-	"go-gw-test/cmd/users_gw/internal/utils"
+	"github.com/yirez/go-gw-test/cmd/users_gw/internal/repo"
+	"github.com/yirez/go-gw-test/cmd/users_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/users_gw/internal/utils"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
