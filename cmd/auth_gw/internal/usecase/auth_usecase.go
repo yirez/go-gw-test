@@ -5,14 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-gw-test/cmd/auth_gw/internal/utils"
-	"go-gw-test/pkg/rest_qol"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/utils"
+	"github.com/yirez/go-gw-test/pkg/rest_qol"
 	"net/http"
 	"strconv"
 	"time"
 
-	"go-gw-test/cmd/auth_gw/internal/repo"
-	"go-gw-test/cmd/auth_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/repo"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/types"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"

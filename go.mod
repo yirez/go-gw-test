@@ -1,4 +1,4 @@
-module go-gw-test
+module github.com/yirez/go-gw-test
 
 go 1.25.7
 

@@ -2,9 +2,9 @@ package globals
 
 import (
 	"fmt"
-	"go-gw-test/cmd/auth_gw/internal/types"
-	"go-gw-test/pkg/configuration_manager"
-	cmt "go-gw-test/pkg/configuration_manager/types"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/types"
+	"github.com/yirez/go-gw-test/pkg/configuration_manager"
+	cmt "github.com/yirez/go-gw-test/pkg/configuration_manager/types"
 	"os"
 	"time"
 

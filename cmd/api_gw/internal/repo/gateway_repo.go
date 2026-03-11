@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"go-gw-test/cmd/api_gw/internal/types"
-	"go-gw-test/cmd/api_gw/internal/utils"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/utils"
 
 	"go.uber.org/zap"
 )

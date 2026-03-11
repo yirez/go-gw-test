@@ -4,7 +4,7 @@ import (
 	"net/http/httputil"
 	"time"
 
-	cmt "go-gw-test/pkg/configuration_manager/types"
+	cmt "github.com/yirez/go-gw-test/pkg/configuration_manager/types"
 )
 
 // AppConfig wraps api_gw configuration and standard configs.

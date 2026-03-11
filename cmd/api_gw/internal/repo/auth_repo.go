@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"

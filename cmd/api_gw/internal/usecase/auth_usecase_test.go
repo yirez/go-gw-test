@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"go-gw-test/cmd/api_gw/internal/repo"
-	"go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/repo"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
 )
 
 type fakeAuthRepo struct {

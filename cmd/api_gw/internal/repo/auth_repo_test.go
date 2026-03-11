@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"

@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	g "go-gw-test/cmd/orders_gw/internal/globals"
-	"go-gw-test/pkg/rest_qol"
+	g "github.com/yirez/go-gw-test/cmd/orders_gw/internal/globals"
+	"github.com/yirez/go-gw-test/pkg/rest_qol"
 
 	"go.uber.org/zap"
 )

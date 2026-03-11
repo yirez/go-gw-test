@@ -2,7 +2,7 @@ package configuration_manager
 
 import (
 	"fmt"
-	"go-gw-test/pkg/configuration_manager/types"
+	"github.com/yirez/go-gw-test/pkg/configuration_manager/types"
 	"log"
 	"reflect"
 

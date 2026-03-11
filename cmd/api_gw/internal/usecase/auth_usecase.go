@@ -3,14 +3,14 @@ package usecase
 import (
 	"context"
 	"errors"
-	"go-gw-test/cmd/api_gw/internal/repo"
-	"go-gw-test/cmd/api_gw/internal/utils"
-	"go-gw-test/pkg/rest_qol"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/repo"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/utils"
+	"github.com/yirez/go-gw-test/pkg/rest_qol"
 	"net/http"
 	"strings"
 	"time"
 
-	"go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"

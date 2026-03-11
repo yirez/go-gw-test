@@ -4,7 +4,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
 )
 
 // TestGatewayRepoMatchRoutePrefersSpecific verifies the longest matching route wins.

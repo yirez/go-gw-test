@@ -3,9 +3,9 @@ package usecase
 import (
 	"net/http"
 
-	"go-gw-test/cmd/api_gw/internal/repo"
-	"go-gw-test/cmd/api_gw/internal/types"
-	"go-gw-test/cmd/api_gw/internal/utils"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/repo"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/types"
+	"github.com/yirez/go-gw-test/cmd/api_gw/internal/utils"
 
 	"go.uber.org/zap"
 )

@@ -1,14 +1,14 @@
 package main
 
 import (
-	g "go-gw-test/cmd/auth_gw/internal/globals"
-	"go-gw-test/cmd/auth_gw/internal/repo"
-	"go-gw-test/pkg/rest_qol"
+	g "github.com/yirez/go-gw-test/cmd/auth_gw/internal/globals"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/repo"
+	"github.com/yirez/go-gw-test/pkg/rest_qol"
 	"net/http"
 	"time"
 
-	_ "go-gw-test/cmd/auth_gw/docs"
-	"go-gw-test/cmd/auth_gw/internal/usecase"
+	_ "github.com/yirez/go-gw-test/cmd/auth_gw/docs"
+	"github.com/yirez/go-gw-test/cmd/auth_gw/internal/usecase"
 
 	"github.com/gorilla/mux"
 	httpSwagger "github.com/swaggo/http-swagger"
